@@ -1,863 +1,1140 @@
 {
-  "projectId": "6a490aa3003a6a052c4f",
-  "projectName": "Control instituto",
-  "endpoint": "https://agencia-appwrite.n2wanx.easypanel.host/v1",
-  "databases": [
-    {
-      "$id": "main",
-      "name": "Control Instituto",
-      "enabled": true
-    }
-  ],
-  "collections": [
-    {
-      "$id": "students",
-      "$permissions": [],
-      "databaseId": "main",
-      "name": "students",
-      "enabled": true,
-      "documentSecurity": false,
-      "attributes": [
+    "projectId": "6a490aa3003a6a052c4f",
+    "projectName": "Control instituto",
+    "endpoint": "https://agencia-appwrite.n2wanx.easypanel.host/v1",
+    "functions": [
         {
-          "key": "nombre",
-          "type": "string",
-          "size": 128,
-          "required": true,
-          "array": false
+            "$id": "markOverduePayments",
+            "name": "Marcar mensualidades vencidas",
+            "enabled": true,
+            "logging": true,
+            "runtime": "node-16.0",
+            "buildSpecification": "s-1vcpu-512mb",
+            "runtimeSpecification": "s-1vcpu-512mb",
+            "deploymentRetention": 7,
+            "scopes": [
+                "databases.read",
+                "databases.write"
+            ],
+            "events": [],
+            "schedule": "0 0 * * *",
+            "timeout": 30,
+            "entrypoint": "src/main.js",
+            "commands": "npm install",
+            "ignore": "node_modules\n.tmp",
+            "path": "functions/mark-overdue-payments"
         },
         {
-          "key": "apellido",
-          "type": "string",
-          "size": 128,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "documento",
-          "type": "string",
-          "size": 32,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "email",
-          "type": "string",
-          "size": 128,
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "telefono",
-          "type": "string",
-          "size": 32,
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "direccion",
-          "type": "string",
-          "size": 256,
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "fechaInscripcion",
-          "type": "datetime",
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "estado",
-          "type": "string",
-          "size": 16,
-          "required": false,
-          "array": false,
-          "default": "activo"
+            "$id": "secureOperations",
+            "name": "Operaciones seguras del instituto",
+            "enabled": true,
+            "logging": true,
+            "runtime": "node-16.0",
+            "buildSpecification": "s-1vcpu-512mb",
+            "runtimeSpecification": "s-1vcpu-512mb",
+            "deploymentRetention": 7,
+            "scopes": [
+                "databases.read",
+                "databases.write",
+                "teams.read",
+                "teams.write",
+                "users.read",
+                "users.write"
+            ],
+            "events": [],
+            "schedule": "",
+            "timeout": 30,
+            "entrypoint": "src/main.js",
+            "commands": "npm install",
+            "ignore": "node_modules\n.tmp",
+            "path": "functions/secure-operations"
         }
-      ],
-      "indexes": [
+    ],
+    "databases": [
         {
-          "key": "idx_documento",
-          "type": "unique",
-          "attributes": ["documento"]
-        },
-        {
-          "key": "idx_nombre",
-          "type": "fulltext",
-          "attributes": ["nombre", "apellido"]
-        },
-        {
-          "key": "idx_estado",
-          "type": "key",
-          "attributes": ["estado"],
-          "orders": ["ASC"]
+            "$id": "main",
+            "name": "Control Instituto",
+            "enabled": true
         }
-      ]
-    },
-    {
-      "$id": "branches",
-      "$permissions": [],
-      "databaseId": "main",
-      "name": "branches",
-      "enabled": true,
-      "documentSecurity": false,
-      "attributes": [
+    ],
+    "collections": [
         {
-          "key": "nombre",
-          "type": "string",
-          "size": 128,
-          "required": true,
-          "array": false
+            "$id": "students",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "students",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "nombre",
+                    "type": "string",
+                    "size": 128,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "apellido",
+                    "type": "string",
+                    "size": 128,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "documento",
+                    "type": "string",
+                    "size": 32,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "email",
+                    "type": "string",
+                    "size": 128,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "telefono",
+                    "type": "string",
+                    "size": 32,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "direccion",
+                    "type": "string",
+                    "size": 256,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "sucursalId",
+                    "type": "string",
+                    "size": 64,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "fechaInscripcion",
+                    "type": "datetime",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "estado",
+                    "type": "string",
+                    "size": 16,
+                    "required": false,
+                    "array": false,
+                    "default": "activo"
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_documento",
+                    "type": "unique",
+                    "attributes": [
+                        "documento"
+                    ]
+                },
+                {
+                    "key": "idx_nombre",
+                    "type": "fulltext",
+                    "attributes": [
+                        "nombre",
+                        "apellido"
+                    ]
+                },
+                {
+                    "key": "idx_estado",
+                    "type": "key",
+                    "attributes": [
+                        "estado"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_sucursal",
+                    "type": "key",
+                    "attributes": [
+                        "sucursalId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
         },
         {
-          "key": "tipo",
-          "type": "string",
-          "size": 16,
-          "required": true,
-          "array": false
+            "$id": "branches",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "branches",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "nombre",
+                    "type": "string",
+                    "size": 128,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "tipo",
+                    "type": "string",
+                    "size": 16,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "direccion",
+                    "type": "string",
+                    "size": 256,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "telefono",
+                    "type": "string",
+                    "size": 32,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "estado",
+                    "type": "string",
+                    "size": 16,
+                    "required": false,
+                    "array": false,
+                    "default": "activo"
+                }
+            ],
+            "indexes": []
         },
         {
-          "key": "direccion",
-          "type": "string",
-          "size": 256,
-          "required": false,
-          "array": false
+            "$id": "careers",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "careers",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "nombre",
+                    "type": "string",
+                    "size": 128,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "descripcion",
+                    "type": "string",
+                    "size": 512,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "sucursalId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "estado",
+                    "type": "string",
+                    "size": 16,
+                    "required": false,
+                    "array": false,
+                    "default": "activo"
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_sucursal",
+                    "type": "key",
+                    "attributes": [
+                        "sucursalId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
         },
         {
-          "key": "telefono",
-          "type": "string",
-          "size": 32,
-          "required": false,
-          "array": false
+            "$id": "teachers",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "teachers",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "nombre",
+                    "type": "string",
+                    "size": 128,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "apellido",
+                    "type": "string",
+                    "size": 128,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "documento",
+                    "type": "string",
+                    "size": 32,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "email",
+                    "type": "string",
+                    "size": 128,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "telefono",
+                    "type": "string",
+                    "size": 32,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "especialidad",
+                    "type": "string",
+                    "size": 128,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "estado",
+                    "type": "string",
+                    "size": 16,
+                    "required": false,
+                    "array": false,
+                    "default": "activo"
+                },
+                {
+                    "key": "userId",
+                    "type": "string",
+                    "size": 64,
+                    "required": false,
+                    "array": false
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_documento",
+                    "type": "unique",
+                    "attributes": [
+                        "documento"
+                    ]
+                },
+                {
+                    "key": "idx_userId",
+                    "type": "key",
+                    "attributes": [
+                        "userId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
         },
         {
-          "key": "estado",
-          "type": "string",
-          "size": 16,
-          "required": false,
-          "array": false,
-          "default": "activa"
+            "$id": "courses",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "courses",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "nombre",
+                    "type": "string",
+                    "size": 128,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "descripcion",
+                    "type": "string",
+                    "size": 512,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "sucursalId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "carreraId",
+                    "type": "string",
+                    "size": 64,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "orden",
+                    "type": "integer",
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "docenteId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "fechaInicio",
+                    "type": "datetime",
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "precioMensual",
+                    "type": "double",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "precioPorHora",
+                    "type": "double",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "duracionMeses",
+                    "type": "integer",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "cupoMaximo",
+                    "type": "integer",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "estado",
+                    "type": "string",
+                    "size": 24,
+                    "required": false,
+                    "array": false,
+                    "default": "cerrado"
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_estado",
+                    "type": "key",
+                    "attributes": [
+                        "estado"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_sucursal",
+                    "type": "key",
+                    "attributes": [
+                        "sucursalId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_carrera",
+                    "type": "key",
+                    "attributes": [
+                        "carreraId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_docente",
+                    "type": "key",
+                    "attributes": [
+                        "docenteId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
+        },
+        {
+            "$id": "courseSchedules",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "courseSchedules",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "courseId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "dia",
+                    "type": "string",
+                    "size": 12,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "horaInicio",
+                    "type": "string",
+                    "size": 5,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "horaFin",
+                    "type": "string",
+                    "size": 5,
+                    "required": true,
+                    "array": false
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_course",
+                    "type": "key",
+                    "attributes": [
+                        "courseId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
+        },
+        {
+            "$id": "attendance",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "attendance",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "teacherId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "courseId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "fecha",
+                    "type": "string",
+                    "size": 10,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "horaEntrada",
+                    "type": "datetime",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "horaSalida",
+                    "type": "datetime",
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "estado",
+                    "type": "string",
+                    "size": 16,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "notas",
+                    "type": "string",
+                    "size": 256,
+                    "required": false,
+                    "array": false
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_unico_dia",
+                    "type": "unique",
+                    "attributes": [
+                        "teacherId",
+                        "courseId",
+                        "fecha"
+                    ]
+                },
+                {
+                    "key": "idx_teacher_fecha",
+                    "type": "key",
+                    "attributes": [
+                        "teacherId",
+                        "fecha"
+                    ],
+                    "orders": [
+                        "ASC",
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_course",
+                    "type": "key",
+                    "attributes": [
+                        "courseId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
+        },
+        {
+            "$id": "staffProfiles",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "staffProfiles",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "userId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "sucursalId",
+                    "type": "string",
+                    "size": 64,
+                    "required": false,
+                    "array": false
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_user",
+                    "type": "unique",
+                    "attributes": [
+                        "userId"
+                    ]
+                }
+            ]
+        },
+        {
+            "$id": "enrollments",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "enrollments",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "studentId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "courseId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "fechaInicio",
+                    "type": "datetime",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "montoMensual",
+                    "type": "double",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "tipoBeca",
+                    "type": "string",
+                    "size": 16,
+                    "required": false,
+                    "array": false,
+                    "default": "ninguna"
+                },
+                {
+                    "key": "valorBeca",
+                    "type": "double",
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "motivoBeca",
+                    "type": "string",
+                    "size": 256,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "diaVencimiento",
+                    "type": "integer",
+                    "required": true,
+                    "array": false,
+                    "min": 1,
+                    "max": 28
+                },
+                {
+                    "key": "estado",
+                    "type": "string",
+                    "size": 16,
+                    "required": false,
+                    "array": false,
+                    "default": "activa"
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_student",
+                    "type": "key",
+                    "attributes": [
+                        "studentId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_course",
+                    "type": "key",
+                    "attributes": [
+                        "courseId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_estado",
+                    "type": "key",
+                    "attributes": [
+                        "estado"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
+        },
+        {
+            "$id": "payments",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "payments",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "enrollmentId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "studentId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "courseId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "sucursalId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "periodo",
+                    "type": "string",
+                    "size": 7,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "montoEsperado",
+                    "type": "double",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "montoPagado",
+                    "type": "double",
+                    "required": false,
+                    "array": false,
+                    "default": 0
+                },
+                {
+                    "key": "fechaVencimiento",
+                    "type": "datetime",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "estado",
+                    "type": "string",
+                    "size": 16,
+                    "required": false,
+                    "array": false,
+                    "default": "pendiente"
+                },
+                {
+                    "key": "notas",
+                    "type": "string",
+                    "size": 256,
+                    "required": false,
+                    "array": false
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_student_periodo",
+                    "type": "key",
+                    "attributes": [
+                        "studentId",
+                        "periodo"
+                    ],
+                    "orders": [
+                        "ASC",
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_estado",
+                    "type": "key",
+                    "attributes": [
+                        "estado"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_vencimiento",
+                    "type": "key",
+                    "attributes": [
+                        "estado",
+                        "fechaVencimiento"
+                    ],
+                    "orders": [
+                        "ASC",
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_sucursal",
+                    "type": "key",
+                    "attributes": [
+                        "sucursalId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_enrollment",
+                    "type": "key",
+                    "attributes": [
+                        "enrollmentId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
+        },
+        {
+            "$id": "transactions",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "transactions",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "paymentId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "studentId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "sucursalId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "monto",
+                    "type": "double",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "metodoPago",
+                    "type": "string",
+                    "size": 16,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "referencia",
+                    "type": "string",
+                    "size": 128,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "fecha",
+                    "type": "datetime",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "registradoPor",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "estado",
+                    "type": "string",
+                    "size": 16,
+                    "required": false,
+                    "array": false,
+                    "default": "valida"
+                },
+                {
+                    "key": "anuladoPor",
+                    "type": "string",
+                    "size": 64,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "motivoAnulacion",
+                    "type": "string",
+                    "size": 256,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "fechaAnulacion",
+                    "type": "datetime",
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "notas",
+                    "type": "string",
+                    "size": 256,
+                    "required": false,
+                    "array": false
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_payment",
+                    "type": "key",
+                    "attributes": [
+                        "paymentId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_cajero_fecha",
+                    "type": "key",
+                    "attributes": [
+                        "registradoPor",
+                        "fecha"
+                    ],
+                    "orders": [
+                        "ASC",
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_sucursal_fecha",
+                    "type": "key",
+                    "attributes": [
+                        "sucursalId",
+                        "fecha"
+                    ],
+                    "orders": [
+                        "ASC",
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_estado",
+                    "type": "key",
+                    "attributes": [
+                        "estado"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
+        },
+        {
+            "$id": "paymentSettings",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "paymentSettings",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "provider",
+                    "type": "string",
+                    "size": 32,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "enabled",
+                    "type": "boolean",
+                    "required": false,
+                    "array": false,
+                    "default": true
+                },
+                {
+                    "key": "environment",
+                    "type": "string",
+                    "size": 32,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "username",
+                    "type": "string",
+                    "size": 128,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "passwordEncrypted",
+                    "type": "string",
+                    "size": 2048,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "aesKeyEncrypted",
+                    "type": "string",
+                    "size": 2048,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "accountCreditEncrypted",
+                    "type": "string",
+                    "size": 2048,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "currency",
+                    "type": "string",
+                    "size": 8,
+                    "required": false,
+                    "array": false,
+                    "default": "BOB"
+                },
+                {
+                    "key": "qrExpirationDays",
+                    "type": "integer",
+                    "required": false,
+                    "array": false,
+                    "min": 1,
+                    "max": 30,
+                    "default": 1
+                },
+                {
+                    "key": "baseUrl",
+                    "type": "string",
+                    "size": 256,
+                    "required": false,
+                    "array": false
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_provider",
+                    "type": "key",
+                    "attributes": [
+                        "provider"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
         }
-      ],
-      "indexes": []
-    },
-    {
-      "$id": "careers",
-      "$permissions": [],
-      "databaseId": "main",
-      "name": "careers",
-      "enabled": true,
-      "documentSecurity": false,
-      "attributes": [
-        {
-          "key": "nombre",
-          "type": "string",
-          "size": 128,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "descripcion",
-          "type": "string",
-          "size": 512,
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "sucursalId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "estado",
-          "type": "string",
-          "size": 16,
-          "required": false,
-          "array": false,
-          "default": "activa"
-        }
-      ],
-      "indexes": [
-        {
-          "key": "idx_sucursal",
-          "type": "key",
-          "attributes": ["sucursalId"],
-          "orders": ["ASC"]
-        }
-      ]
-    },
-    {
-      "$id": "teachers",
-      "$permissions": [],
-      "databaseId": "main",
-      "name": "teachers",
-      "enabled": true,
-      "documentSecurity": false,
-      "attributes": [
-        {
-          "key": "nombre",
-          "type": "string",
-          "size": 128,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "apellido",
-          "type": "string",
-          "size": 128,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "documento",
-          "type": "string",
-          "size": 32,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "email",
-          "type": "string",
-          "size": 128,
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "telefono",
-          "type": "string",
-          "size": 32,
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "especialidad",
-          "type": "string",
-          "size": 128,
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "estado",
-          "type": "string",
-          "size": 16,
-          "required": false,
-          "array": false,
-          "default": "activo"
-        },
-        {
-          "key": "userId",
-          "type": "string",
-          "size": 64,
-          "required": false,
-          "array": false
-        }
-      ],
-      "indexes": [
-        {
-          "key": "idx_documento",
-          "type": "unique",
-          "attributes": ["documento"]
-        },
-        {
-          "key": "idx_userId",
-          "type": "key",
-          "attributes": ["userId"],
-          "orders": ["ASC"]
-        }
-      ]
-    },
-    {
-      "$id": "courses",
-      "$permissions": [],
-      "databaseId": "main",
-      "name": "courses",
-      "enabled": true,
-      "documentSecurity": false,
-      "attributes": [
-        {
-          "key": "nombre",
-          "type": "string",
-          "size": 128,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "descripcion",
-          "type": "string",
-          "size": 512,
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "sucursalId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "carreraId",
-          "type": "string",
-          "size": 64,
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "orden",
-          "type": "integer",
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "docenteId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "precioMensual",
-          "type": "double",
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "precioPorHora",
-          "type": "double",
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "duracionMeses",
-          "type": "integer",
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "cupoMaximo",
-          "type": "integer",
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "estado",
-          "type": "string",
-          "size": 24,
-          "required": false,
-          "array": false,
-          "default": "cerrado"
-        }
-      ],
-      "indexes": [
-        {
-          "key": "idx_estado",
-          "type": "key",
-          "attributes": ["estado"],
-          "orders": ["ASC"]
-        },
-        {
-          "key": "idx_sucursal",
-          "type": "key",
-          "attributes": ["sucursalId"],
-          "orders": ["ASC"]
-        },
-        {
-          "key": "idx_carrera",
-          "type": "key",
-          "attributes": ["carreraId"],
-          "orders": ["ASC"]
-        },
-        {
-          "key": "idx_docente",
-          "type": "key",
-          "attributes": ["docenteId"],
-          "orders": ["ASC"]
-        }
-      ]
-    },
-    {
-      "$id": "courseSchedules",
-      "$permissions": [],
-      "databaseId": "main",
-      "name": "courseSchedules",
-      "enabled": true,
-      "documentSecurity": false,
-      "attributes": [
-        {
-          "key": "courseId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "dia",
-          "type": "string",
-          "size": 12,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "horaInicio",
-          "type": "string",
-          "size": 5,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "horaFin",
-          "type": "string",
-          "size": 5,
-          "required": true,
-          "array": false
-        }
-      ],
-      "indexes": [
-        {
-          "key": "idx_course",
-          "type": "key",
-          "attributes": ["courseId"],
-          "orders": ["ASC"]
-        }
-      ]
-    },
-    {
-      "$id": "attendance",
-      "$permissions": [],
-      "databaseId": "main",
-      "name": "attendance",
-      "enabled": true,
-      "documentSecurity": false,
-      "attributes": [
-        {
-          "key": "teacherId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "courseId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "fecha",
-          "type": "string",
-          "size": 10,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "horaEntrada",
-          "type": "datetime",
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "horaSalida",
-          "type": "datetime",
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "estado",
-          "type": "string",
-          "size": 16,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "notas",
-          "type": "string",
-          "size": 256,
-          "required": false,
-          "array": false
-        }
-      ],
-      "indexes": [
-        {
-          "key": "idx_unico_dia",
-          "type": "unique",
-          "attributes": ["teacherId", "courseId", "fecha"]
-        },
-        {
-          "key": "idx_teacher_fecha",
-          "type": "key",
-          "attributes": ["teacherId", "fecha"],
-          "orders": ["ASC", "ASC"]
-        },
-        {
-          "key": "idx_course",
-          "type": "key",
-          "attributes": ["courseId"],
-          "orders": ["ASC"]
-        }
-      ]
-    },
-    {
-      "$id": "staffProfiles",
-      "$permissions": [],
-      "databaseId": "main",
-      "name": "staffProfiles",
-      "enabled": true,
-      "documentSecurity": false,
-      "attributes": [
-        {
-          "key": "userId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "sucursalId",
-          "type": "string",
-          "size": 64,
-          "required": false,
-          "array": false
-        }
-      ],
-      "indexes": [
-        {
-          "key": "idx_user",
-          "type": "unique",
-          "attributes": ["userId"]
-        }
-      ]
-    },
-    {
-      "$id": "enrollments",
-      "$permissions": [],
-      "databaseId": "main",
-      "name": "enrollments",
-      "enabled": true,
-      "documentSecurity": false,
-      "attributes": [
-        {
-          "key": "studentId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "courseId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "fechaInicio",
-          "type": "datetime",
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "montoMensual",
-          "type": "double",
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "tipoBeca",
-          "type": "string",
-          "size": 16,
-          "required": false,
-          "array": false,
-          "default": "ninguna"
-        },
-        {
-          "key": "valorBeca",
-          "type": "double",
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "motivoBeca",
-          "type": "string",
-          "size": 256,
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "diaVencimiento",
-          "type": "integer",
-          "required": true,
-          "array": false,
-          "min": 1,
-          "max": 28
-        },
-        {
-          "key": "estado",
-          "type": "string",
-          "size": 16,
-          "required": false,
-          "array": false,
-          "default": "activa"
-        }
-      ],
-      "indexes": [
-        {
-          "key": "idx_student",
-          "type": "key",
-          "attributes": ["studentId"],
-          "orders": ["ASC"]
-        },
-        {
-          "key": "idx_course",
-          "type": "key",
-          "attributes": ["courseId"],
-          "orders": ["ASC"]
-        },
-        {
-          "key": "idx_estado",
-          "type": "key",
-          "attributes": ["estado"],
-          "orders": ["ASC"]
-        }
-      ]
-    },
-    {
-      "$id": "payments",
-      "$permissions": [],
-      "databaseId": "main",
-      "name": "payments",
-      "enabled": true,
-      "documentSecurity": false,
-      "attributes": [
-        {
-          "key": "enrollmentId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "studentId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "courseId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "sucursalId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "periodo",
-          "type": "string",
-          "size": 7,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "montoEsperado",
-          "type": "double",
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "montoPagado",
-          "type": "double",
-          "required": false,
-          "array": false,
-          "default": 0
-        },
-        {
-          "key": "fechaVencimiento",
-          "type": "datetime",
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "estado",
-          "type": "string",
-          "size": 16,
-          "required": false,
-          "array": false,
-          "default": "pendiente"
-        },
-        {
-          "key": "notas",
-          "type": "string",
-          "size": 256,
-          "required": false,
-          "array": false
-        }
-      ],
-      "indexes": [
-        {
-          "key": "idx_student_periodo",
-          "type": "key",
-          "attributes": ["studentId", "periodo"],
-          "orders": ["ASC", "ASC"]
-        },
-        {
-          "key": "idx_estado",
-          "type": "key",
-          "attributes": ["estado"],
-          "orders": ["ASC"]
-        },
-        {
-          "key": "idx_vencimiento",
-          "type": "key",
-          "attributes": ["estado", "fechaVencimiento"],
-          "orders": ["ASC", "ASC"]
-        },
-        {
-          "key": "idx_sucursal",
-          "type": "key",
-          "attributes": ["sucursalId"],
-          "orders": ["ASC"]
-        },
-        {
-          "key": "idx_enrollment",
-          "type": "key",
-          "attributes": ["enrollmentId"],
-          "orders": ["ASC"]
-        }
-      ]
-    },
-    {
-      "$id": "transactions",
-      "$permissions": [],
-      "databaseId": "main",
-      "name": "transactions",
-      "enabled": true,
-      "documentSecurity": false,
-      "attributes": [
-        {
-          "key": "paymentId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "studentId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "sucursalId",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "monto",
-          "type": "double",
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "metodoPago",
-          "type": "string",
-          "size": 16,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "referencia",
-          "type": "string",
-          "size": 128,
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "fecha",
-          "type": "datetime",
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "registradoPor",
-          "type": "string",
-          "size": 64,
-          "required": true,
-          "array": false
-        },
-        {
-          "key": "estado",
-          "type": "string",
-          "size": 16,
-          "required": false,
-          "array": false,
-          "default": "valida"
-        },
-        {
-          "key": "anuladoPor",
-          "type": "string",
-          "size": 64,
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "motivoAnulacion",
-          "type": "string",
-          "size": 256,
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "fechaAnulacion",
-          "type": "datetime",
-          "required": false,
-          "array": false
-        },
-        {
-          "key": "notas",
-          "type": "string",
-          "size": 256,
-          "required": false,
-          "array": false
-        }
-      ],
-      "indexes": [
-        {
-          "key": "idx_payment",
-          "type": "key",
-          "attributes": ["paymentId"],
-          "orders": ["ASC"]
-        },
-        {
-          "key": "idx_cajero_fecha",
-          "type": "key",
-          "attributes": ["registradoPor", "fecha"],
-          "orders": ["ASC", "ASC"]
-        },
-        {
-          "key": "idx_sucursal_fecha",
-          "type": "key",
-          "attributes": ["sucursalId", "fecha"],
-          "orders": ["ASC", "ASC"]
-        },
-        {
-          "key": "idx_estado",
-          "type": "key",
-          "attributes": ["estado"],
-          "orders": ["ASC"]
-        }
-      ]
-    }
-  ]
+    ]
 }

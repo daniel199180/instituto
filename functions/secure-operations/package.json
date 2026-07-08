@@ -1,0 +1,9 @@
+{
+  "name": "secure-operations",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "node-appwrite": "^26.2.0"
+  }
+}
