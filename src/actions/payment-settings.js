@@ -7,6 +7,7 @@ import {
   saveBanecoSettings,
 } from "@/lib/baneco-settings";
 import { validateBanecoConnection } from "@/lib/baneco";
+import { requireStaffSession } from "@/lib/auth-guard";
 
 function getActionError(error) {
   return error?.message || "No se pudo completar la operación.";
@@ -14,6 +15,8 @@ function getActionError(error) {
 
 export async function getPaymentSettings() {
   try {
+    await requireStaffSession();
+
     const settings = await getBanecoSettingsForForm();
 
     return { ok: true, settings };
@@ -28,6 +31,8 @@ export async function getPaymentSettings() {
 
 export async function updateBanecoSettings(input = {}) {
   try {
+    await requireStaffSession();
+
     const result = await saveBanecoSettings(input);
 
     if (result.ok) {
@@ -42,6 +47,8 @@ export async function updateBanecoSettings(input = {}) {
 
 export async function testBanecoConnection() {
   try {
+    await requireStaffSession();
+
     await validateBanecoConnection();
 
     return { ok: true };
@@ -52,6 +59,8 @@ export async function testBanecoConnection() {
 
 export async function validateBanecoAccess(input = {}) {
   try {
+    await requireStaffSession();
+
     const settings = await getBanecoSettingsForValidation(input);
 
     await validateBanecoConnection(settings);

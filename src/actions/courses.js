@@ -7,6 +7,7 @@ import {
   Query,
   createAdminDatabases,
 } from "@/lib/appwrite-server";
+import { requireStaffSession } from "@/lib/auth-guard";
 
 const COURSES_COLLECTION_ID = "courses";
 const BRANCHES_COLLECTION_ID = "branches";
@@ -506,6 +507,8 @@ async function syncCourseSchedules(courseId, schedules) {
 
 export async function listCourses() {
   try {
+    await requireStaffSession();
+
     const [context, courses] = await Promise.all([
       getCourseContext(),
       listAllDocuments(COURSES_COLLECTION_ID, [
@@ -558,6 +561,8 @@ export async function listCourseEnrolledStudents(courseId) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
     const [course, enrollments] = await Promise.all([
       databases.getDocument({
@@ -637,6 +642,8 @@ export async function createCourse(input) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
     const course = await databases.createDocument({
       collectionId: COURSES_COLLECTION_ID,
@@ -670,6 +677,8 @@ export async function updateCourse(courseId, input) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
     const course = await databases.updateDocument({
       collectionId: COURSES_COLLECTION_ID,
@@ -697,6 +706,8 @@ export async function deleteCourse(courseId) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
     const enrollments = await listAllDocuments(ENROLLMENTS_COLLECTION_ID, [
       Query.equal("courseId", cleanCourseId),

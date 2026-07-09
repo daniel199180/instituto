@@ -1,8 +1,20 @@
 import "server-only";
 
-import { listPayments, registerTransaction } from "@/actions/payments";
+import {
+  APPWRITE_DATABASE_ID,
+  Query,
+  createAdminDatabases,
+} from "@/lib/appwrite-server";
+import { registerPublicTransaction } from "@/lib/public-payment-registration";
 import { generateBanecoQr } from "@/lib/baneco";
 import { parsePaymentLinkToken } from "@/lib/payment-links";
+import { PAYMENT_LINK_NOTE } from "@/lib/payment-constants";
+
+const PAYMENTS_COLLECTION_ID = "payments";
+const STUDENTS_COLLECTION_ID = "students";
+const COURSES_COLLECTION_ID = "courses";
+const BRANCHES_COLLECTION_ID = "branches";
+const PAYMENT_LINKS_COLLECTION_ID = "paymentLinks";
 
 function getPaymentBalance(payment) {
   return Math.max(
@@ -22,26 +34,92 @@ function formatLinkPayments(payments) {
     );
 }
 
+/**
+ * Authorization for everything in this file comes from the HMAC-signed
+ * payment-link token (see payment-links.js), never from a staff session —
+ * this flow is used by anonymous students/guardians. It talks to Appwrite
+ * directly with the admin client, scoped to only the payment(s) named in
+ * the token, instead of going through the staff-only Server Actions in
+ * src/actions/payments.js.
+ */
+async function fetchLinkPayments(link) {
+  const databases = createAdminDatabases();
+
+  if (link.type === "enrollment") {
+    const response = await databases.listDocuments({
+      collectionId: PAYMENTS_COLLECTION_ID,
+      databaseId: APPWRITE_DATABASE_ID,
+      queries: [Query.equal("enrollmentId", link.id), Query.limit(100)],
+    });
+
+    return response.documents;
+  }
+
+  try {
+    const payment = await databases.getDocument({
+      collectionId: PAYMENTS_COLLECTION_ID,
+      databaseId: APPWRITE_DATABASE_ID,
+      documentId: link.id,
+    });
+
+    return [payment];
+  } catch {
+    return [];
+  }
+}
+
+async function getDocumentOrNull(collectionId, documentId) {
+  if (!documentId) return null;
+
+  try {
+    const databases = createAdminDatabases();
+
+    return await databases.getDocument({
+      collectionId,
+      databaseId: APPWRITE_DATABASE_ID,
+      documentId,
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function serializeLinkPayment(payment) {
+  const [student, course] = await Promise.all([
+    getDocumentOrNull(STUDENTS_COLLECTION_ID, payment.studentId),
+    getDocumentOrNull(COURSES_COLLECTION_ID, payment.courseId),
+  ]);
+  const branch = await getDocumentOrNull(
+    BRANCHES_COLLECTION_ID,
+    course?.sucursalId,
+  );
+
+  return {
+    $id: payment.$id,
+    courseName: course?.nombre || "Curso no encontrado",
+    enrollmentId: payment.enrollmentId || "",
+    fechaVencimiento: payment.fechaVencimiento || "",
+    montoEsperado: Number(payment.montoEsperado || 0),
+    montoPagado: Number(payment.montoPagado || 0),
+    periodo: payment.periodo || "",
+    studentName:
+      `${student?.nombre || ""} ${student?.apellido || ""}`.trim() ||
+      "Estudiante no encontrado",
+    sucursalNombre: branch?.nombre || "Sin sucursal",
+  };
+}
+
 export async function getPaymentLinkData(token) {
   const link = parsePaymentLinkToken(token);
-  const paymentsResult = await listPayments();
+  const rawPayments = await fetchLinkPayments(link);
 
-  if (!paymentsResult.ok) {
-    return { error: paymentsResult.error, ok: false };
-  }
-
-  const payments =
-    link.type === "enrollment"
-      ? paymentsResult.payments.filter(
-          (payment) => payment.enrollmentId === link.id,
-        )
-      : paymentsResult.payments.filter((payment) => payment.$id === link.id);
-  const pendingPayments = formatLinkPayments(payments);
-  const referencePayment = pendingPayments[0] || payments[0];
-
-  if (!referencePayment) {
+  if (!rawPayments.length) {
     return { error: "No se encontró la mensualidad del enlace.", ok: false };
   }
+
+  const payments = await Promise.all(rawPayments.map(serializeLinkPayment));
+  const pendingPayments = formatLinkPayments(payments);
+  const referencePayment = pendingPayments[0] || payments[0];
 
   const amount = Number(
     pendingPayments
@@ -102,6 +180,30 @@ export async function generatePaymentLinkQr(token) {
   };
 }
 
+async function markPaymentLinkPaid(token) {
+  try {
+    const databases = createAdminDatabases();
+    const response = await databases.listDocuments({
+      collectionId: PAYMENT_LINKS_COLLECTION_ID,
+      databaseId: APPWRITE_DATABASE_ID,
+      queries: [Query.equal("token", token), Query.limit(1)],
+    });
+    const link = response.documents[0];
+
+    if (!link || link.estado === "pagado") return;
+
+    await databases.updateDocument({
+      collectionId: PAYMENT_LINKS_COLLECTION_ID,
+      databaseId: APPWRITE_DATABASE_ID,
+      documentId: link.$id,
+      data: { estado: "pagado", paidAt: new Date().toISOString() },
+    });
+  } catch {
+    // Best-effort bookkeeping only — the actual payment already succeeded
+    // above, so a tracking-record hiccup here must never fail the request.
+  }
+}
+
 export async function confirmPaymentLink(token, qrId = "") {
   const cleanQrId = typeof qrId === "string" ? qrId.trim() : "";
   const data = await getPaymentLinkData(token);
@@ -122,10 +224,10 @@ export async function confirmPaymentLink(token, qrId = "") {
     if (remainingAmount <= 0) break;
 
     const amountToRegister = Math.min(payment.amount, remainingAmount);
-    const result = await registerTransaction(payment.id, {
+    const result = await registerPublicTransaction(payment.id, {
       metodoPago: "qr",
       monto: Number(amountToRegister.toFixed(2)),
-      notas: "Pago por enlace de pago",
+      notas: PAYMENT_LINK_NOTE,
       referencia: cleanQrId,
     });
 
@@ -135,6 +237,8 @@ export async function confirmPaymentLink(token, qrId = "") {
 
     remainingAmount = Number((remainingAmount - amountToRegister).toFixed(2));
   }
+
+  await markPaymentLinkPaid(token);
 
   return {
     amount: data.amount,

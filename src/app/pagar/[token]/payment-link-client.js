@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
-import { Check, Download, Loader2, QrCode } from "lucide-react";
+import { Check, Download, Loader2, QrCode, WalletCards } from "lucide-react";
 
 function formatMoney(value) {
   return `Bs ${Number(value || 0).toLocaleString("es-BO", {
@@ -295,14 +296,20 @@ export function PaymentLinkClient({ token }) {
               </h2>
               <p>{confirmation.message}</p>
             </div>
-            <button
-              className="primary-action"
-              onClick={() => setConfirmation(null)}
-              type="button"
-            >
-              <Check size={18} />
-              <span>Aceptar</span>
-            </button>
+            <div className="payment-link-modal-actions">
+              <Link className="primary-action" href="/estudiantes">
+                <WalletCards size={18} />
+                <span>Consulta tus pagos aquí</span>
+              </Link>
+              <button
+                className="secondary-action"
+                onClick={() => setConfirmation(null)}
+                type="button"
+              >
+                <Check size={18} />
+                <span>Aceptar</span>
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

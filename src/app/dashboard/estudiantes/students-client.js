@@ -6,7 +6,6 @@ import {
   CreditCard,
   Edit3,
   Loader2,
-  Plus,
   QrCode,
   RefreshCw,
   Search,
@@ -16,12 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { listPayments, registerTransaction } from "@/actions/payments";
-import {
-  createStudent,
-  deleteStudent,
-  listStudents,
-  updateStudent,
-} from "@/actions/students";
+import { deleteStudent, listStudents, updateStudent } from "@/actions/students";
 
 const emptyForm = {
   apellido: "",
@@ -204,7 +198,7 @@ export function StudentsClient() {
   const [branches, setBranches] = useState([]);
   const [courses, setCourses] = useState([]);
   const [students, setStudents] = useState([]);
-  const [drawerMode, setDrawerMode] = useState("closed");
+  const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [paymentDrawerStudent, setPaymentDrawerStudent] = useState(null);
   const [studentPayments, setStudentPayments] = useState([]);
@@ -307,20 +301,6 @@ export function StudentsClient() {
     });
   }
 
-  function openCreateDrawer() {
-    const today = getTodayDateInputValue();
-
-    setError("");
-    setNotice("");
-    setEditingStudent(null);
-    setPaymentDrawerStudent(null);
-    setForm({
-      ...emptyForm,
-      fechaInscripcion: today,
-    });
-    setDrawerMode("create");
-  }
-
   function openEditDrawer(student) {
     setError("");
     setNotice("");
@@ -341,13 +321,13 @@ export function StudentsClient() {
       sucursalId: student.sucursalId,
       telefono: student.telefono,
     });
-    setDrawerMode("edit");
+    setIsEditDrawerOpen(true);
   }
 
   function closeDrawer(force = false) {
     if (isPending && !force) return;
 
-    setDrawerMode("closed");
+    setIsEditDrawerOpen(false);
     setEditingStudent(null);
     setForm(emptyForm);
   }
@@ -356,7 +336,7 @@ export function StudentsClient() {
     setError("");
     setNotice("");
     setPaymentsError("");
-    setDrawerMode("closed");
+    setIsEditDrawerOpen(false);
     setEditingStudent(null);
     setPaymentDrawerStudent(student);
     setStudentPayments([]);
@@ -444,7 +424,7 @@ export function StudentsClient() {
       );
       setSelectedPayment(updatedPayment.saldo > 0 ? updatedPayment : null);
       setPaymentForm(emptyPaymentForm);
-      setNotice("Cobro registrado. El ingreso ya está en reportes.");
+      setNotice("Cobro registrado. El ingreso ya está en pagos.");
       refreshStudents();
     });
   }
@@ -531,7 +511,7 @@ export function StudentsClient() {
         setSelectedPayment(updatedPayment.saldo > 0 ? updatedPayment : null);
         setPaymentForm(emptyPaymentForm);
         setQrDialog(null);
-        setNotice("Pago QR confirmado. El ingreso ya está en reportes.");
+        setNotice("Pago QR confirmado. El ingreso ya está en pagos.");
         refreshStudents();
       } catch (qrError) {
         setPaymentsError(qrError.message || "No se pudo verificar el QR.");
@@ -593,10 +573,7 @@ export function StudentsClient() {
     setNotice("");
 
     startTransition(async () => {
-      const result =
-        drawerMode === "edit" && editingStudent
-          ? await updateStudent(editingStudent.$id, form)
-          : await createStudent(form);
+      const result = await updateStudent(editingStudent.$id, form);
 
       if (!result.ok) {
         setError(result.error);
@@ -711,15 +688,6 @@ export function StudentsClient() {
             size={17}
           />
           <span>Actualizar</span>
-        </button>
-
-        <button
-          className="primary-action branch-create"
-          onClick={openCreateDrawer}
-          type="button"
-        >
-          <Plus size={18} />
-          <span>Crear</span>
         </button>
       </section>
 
@@ -1147,7 +1115,7 @@ export function StudentsClient() {
         </div>
       ) : null}
 
-      {drawerMode !== "closed" ? (
+      {isEditDrawerOpen ? (
         <div className="drawer-layer" role="presentation">
           <button
             aria-label="Cerrar panel"
@@ -1163,9 +1131,7 @@ export function StudentsClient() {
             <header className="drawer-header">
               <div>
                 <p className="eyebrow">Estudiante</p>
-                <h2 id="student-drawer-title">
-                  {drawerMode === "edit" ? "Editar" : "Crear"}
-                </h2>
+                <h2 id="student-drawer-title">Editar</h2>
               </div>
               <button
                 aria-label="Cerrar"

@@ -3,11 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AppwriteException } from "appwrite";
 import {
   AlertTriangle,
   BadgeDollarSign,
-  BarChart3,
   BookOpen,
   Building2,
   CalendarDays,
@@ -25,12 +23,12 @@ import {
   LockKeyhole,
   LogOut,
   Menu,
+  Receipt,
   Settings,
   UserCog,
   Users,
   WalletCards,
 } from "lucide-react";
-import { account } from "@/lib/appwrite";
 
 const staffNavSections = [
   {
@@ -59,7 +57,7 @@ const staffNavSections = [
         icon: WalletCards,
       },
       { label: "Deudores", href: "/dashboard/deudores", icon: AlertTriangle },
-      { label: "Reportes", href: "/dashboard/reportes", icon: BarChart3 },
+      { label: "Pagos", href: "/dashboard/pagos", icon: Receipt },
     ],
   },
   {
@@ -117,38 +115,9 @@ function validateLoginForm({ email, password }) {
 }
 
 function getErrorMessage(error) {
-  if (error instanceof AppwriteException) {
-    const message = error.message.toLowerCase();
-
-    if (
-      message.includes("invalid credentials") ||
-      message.includes("invalid `password`") ||
-      message.includes("invalid password") ||
-      message.includes("user_invalid_credentials")
-    ) {
-      return "Correo o contraseña incorrectos.";
-    }
-
-    if (message.includes("missing required parameter")) {
-      return "Faltan datos obligatorios. Revisa el correo y la contraseña.";
-    }
-
-    if (message.includes("invalid origin")) {
-      return "Este dominio no está autorizado en Appwrite. Agrega localhost como plataforma web del proyecto.";
-    }
-
-    if (error.code === 429) {
-      return "Demasiados intentos. Espera un momento y vuelve a intentar.";
-    }
-
-    if (error.code >= 500) {
-      return "Appwrite no respondió correctamente. Intenta nuevamente en unos segundos.";
-    }
-
-    return "No se pudo iniciar sesión. Verifica tus datos.";
-  }
-
-  return "No se pudo completar la solicitud.";
+  return typeof error === "string" && error
+    ? error
+    : "No se pudo completar la solicitud.";
 }
 
 function isActivePath(pathname, href) {
@@ -177,9 +146,16 @@ export function PrivatePage({
     setSessionStatus("checking");
 
     try {
-      const currentUser = await account.get();
-      setUser(currentUser);
-      setSessionStatus("authenticated");
+      const response = await fetch("/api/auth/session");
+      const data = await response.json();
+
+      if (data.user) {
+        setUser(data.user);
+        setSessionStatus("authenticated");
+      } else {
+        setUser(null);
+        setSessionStatus("guest");
+      }
     } catch {
       setUser(null);
       setSessionStatus("guest");
@@ -204,15 +180,29 @@ export function PrivatePage({
     setSessionStatus("signing-in");
 
     try {
-      await account.createEmailPasswordSession(form.email.trim(), form.password);
+      const response = await fetch("/api/auth/login", {
+        body: JSON.stringify({
+          email: form.email.trim(),
+          password: form.password,
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const data = await response.json();
 
-      const currentUser = await account.get();
-      setUser(currentUser);
+      if (!data.ok) {
+        setUser(null);
+        setError(getErrorMessage(data.error));
+        setSessionStatus("guest");
+        return;
+      }
+
+      setUser(data.user);
       setForm((currentForm) => ({ ...currentForm, password: "" }));
       setSessionStatus("authenticated");
-    } catch (loginError) {
+    } catch {
       setUser(null);
-      setError(getErrorMessage(loginError));
+      setError(getErrorMessage());
       setSessionStatus("guest");
     }
   }
@@ -222,9 +212,7 @@ export function PrivatePage({
     setSessionStatus("signing-out");
 
     try {
-      await account.deleteSession("current");
-    } catch (logoutError) {
-      setError(getErrorMessage(logoutError));
+      await fetch("/api/auth/session", { method: "DELETE" });
     } finally {
       setUser(null);
       setForm({ email: "", password: "" });

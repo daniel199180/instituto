@@ -2,6 +2,7 @@
 
 import { createEnrollment, listEnrollments } from "@/actions/enrollments";
 import { listPayments, registerTransaction } from "@/actions/payments";
+import { createPaymentLinkRecord } from "@/actions/payment-links";
 import { createStudent } from "@/actions/students";
 import { createPaymentLinkToken } from "@/lib/payment-links";
 
@@ -184,12 +185,24 @@ export async function createPosEnrollment(input = {}) {
           enrollmentId: enrollmentResult.enrollment.$id,
         };
       } else {
-        response.paymentLink = {
-          path: `/pagar/${createPaymentLinkToken({
-            id: enrollmentResult.enrollment.$id,
-            type: "enrollment",
-          })}`,
-        };
+        const token = createPaymentLinkToken({
+          amount: paidSummary.total,
+          id: enrollmentResult.enrollment.$id,
+          type: "enrollment",
+        });
+
+        await createPaymentLinkRecord({
+          amount: paidSummary.total,
+          courseName: enrollmentResult.enrollment.courseName,
+          referenceId: enrollmentResult.enrollment.$id,
+          studentId: enrollmentResult.enrollment.studentId,
+          studentName: enrollmentResult.enrollment.studentName,
+          sucursalNombre: enrollmentResult.enrollment.sucursalName,
+          token,
+          type: "enrollment",
+        });
+
+        response.paymentLink = { path: `/pagar/${token}` };
       }
 
       return response;
@@ -399,12 +412,25 @@ export async function createPosPaymentLink(paymentId, amount) {
     return { error: "El monto a cobrar no puede superar el saldo.", ok: false };
   }
 
+  const token = createPaymentLinkToken({
+    amount: requestedAmount,
+    id: payment.$id,
+    type: "payment",
+  });
+
+  await createPaymentLinkRecord({
+    amount: requestedAmount,
+    courseName: payment.courseName,
+    referenceId: payment.$id,
+    studentId: payment.studentId,
+    studentName: payment.studentName,
+    sucursalNombre: payment.sucursalNombre,
+    token,
+    type: "payment",
+  });
+
   return {
     ok: true,
-    path: `/pagar/${createPaymentLinkToken({
-      amount: requestedAmount,
-      id: payment.$id,
-      type: "payment",
-    })}`,
+    path: `/pagar/${token}`,
   };
 }

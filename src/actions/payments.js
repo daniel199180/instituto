@@ -8,6 +8,7 @@ import {
   createAdminDatabases,
 } from "@/lib/appwrite-server";
 import { invokeSecureOperation } from "@/lib/secure-operations";
+import { requireStaffSession } from "@/lib/auth-guard";
 
 const PAYMENTS_COLLECTION_ID = "payments";
 const TRANSACTIONS_COLLECTION_ID = "transactions";
@@ -544,6 +545,8 @@ async function registerTransactionLocally(paymentId, input = {}) {
 
 export async function listPayments(filters = {}) {
   try {
+    await requireStaffSession();
+
     const [context, payments] = await Promise.all([
       getFinancialContext(),
       listAllDocuments(PAYMENTS_COLLECTION_ID, buildPaymentQueries(filters)),
@@ -581,6 +584,8 @@ export async function registerTransaction(paymentId, input = {}) {
   }
 
   try {
+    await requireStaffSession();
+
     const result = await invokeSecureOperation("registerTransaction", {
       input,
       paymentId: cleanPaymentId,
@@ -591,7 +596,7 @@ export async function registerTransaction(paymentId, input = {}) {
 
     revalidatePath("/dashboard/mensualidades");
     revalidatePath("/dashboard/deudores");
-    revalidatePath("/dashboard/reportes");
+    revalidatePath("/dashboard/pagos");
     revalidatePath("/dashboard/estudiantes");
 
     return finalResult;
@@ -602,6 +607,8 @@ export async function registerTransaction(paymentId, input = {}) {
 
 export async function listDebtors(filters = {}) {
   try {
+    await requireStaffSession();
+
     const context = await getFinancialContext();
     const now = new Date().toISOString();
     const payments = await listAllDocuments(PAYMENTS_COLLECTION_ID, [
@@ -839,6 +846,8 @@ async function listReportTransactions(filters = {}) {
 
 export async function getDailyIncomeReport(dateInput = "") {
   try {
+    await requireStaffSession();
+
     const range = getDateRangeForInput(dateInput);
     const result = await listReportTransactions({
       endDate: range.end,
@@ -865,28 +874,152 @@ export async function getDailyIncomeReport(dateInput = "") {
   }
 }
 
-export async function getIncomeHistoryReport(filters = {}) {
+async function buildPaymentJoinMap(transactions, databases) {
+  const paymentIds = [
+    ...new Set(transactions.map((transaction) => transaction.paymentId).filter(Boolean)),
+  ];
+  const payments = await Promise.all(
+    paymentIds.map((paymentId) =>
+      databases
+        .getDocument({
+          collectionId: PAYMENTS_COLLECTION_ID,
+          databaseId: APPWRITE_DATABASE_ID,
+          documentId: paymentId,
+        })
+        .catch(() => null),
+    ),
+  );
+
+  return new Map(payments.filter(Boolean).map((payment) => [payment.$id, payment]));
+}
+
+/**
+ * Paginated at the Appwrite query level (limit/offset + total) whenever the
+ * filters allow it, so browsing years of history stays fast regardless of
+ * how many transactions exist — it never fetches more than one page of raw
+ * documents from the database. Filtering by curso/carrera requires joining
+ * each transaction to its payment (those fields aren't stored directly on
+ * the transaction), so that combination falls back to an in-memory
+ * pagination over the still date/sucursal/método-bounded set.
+ */
+export async function getIncomeHistoryReport(filters = {}, pagination = {}) {
   try {
-    const now = new Date();
-    const startDate = parseDateBoundary(filters.startDate, now);
-    const endDate = parseDateBoundary(filters.endDate, now, true);
-    const result = await listReportTransactions({
-      carreraId: toCleanString(filters.carreraId),
-      courseId: toCleanString(filters.courseId),
-      endDate,
-      estado: "valida",
-      metodoPago: toCleanString(filters.metodoPago),
-      startDate,
-      sucursalId: toCleanString(filters.sucursalId),
-    });
+    await requireStaffSession();
+
+    const page = Math.max(1, Math.trunc(Number(pagination.page)) || 1);
+    const pageSize = Math.min(
+      100,
+      Math.max(1, Math.trunc(Number(pagination.pageSize)) || 20),
+    );
+    const sucursalId = toCleanString(filters.sucursalId);
+    const courseId = toCleanString(filters.courseId);
+    const carreraId = toCleanString(filters.carreraId);
+    const metodoPago = toCleanString(filters.metodoPago);
+    const startDate = toCleanString(filters.startDate)
+      ? parseDateBoundary(filters.startDate, new Date())
+      : "";
+    const endDate = toCleanString(filters.endDate)
+      ? parseDateBoundary(filters.endDate, new Date(), true)
+      : "";
+    const needsJoinFilter =
+      (courseId && courseId !== "todos") || (carreraId && carreraId !== "todos");
+    const baseQueries = [
+      Query.select([
+        "$id",
+        "$createdAt",
+        "paymentId",
+        "studentId",
+        "sucursalId",
+        "monto",
+        "metodoPago",
+        "referencia",
+        "fecha",
+        "registradoPor",
+        "estado",
+        "anuladoPor",
+        "motivoAnulacion",
+        "fechaAnulacion",
+        "notas",
+      ]),
+      Query.equal("estado", "valida"),
+      Query.orderDesc("fecha"),
+    ];
+
+    if (sucursalId && sucursalId !== "todos") {
+      baseQueries.push(Query.equal("sucursalId", sucursalId));
+    }
+
+    if (metodoPago && metodoPago !== "todos") {
+      baseQueries.push(Query.equal("metodoPago", metodoPago));
+    }
+
+    if (startDate) baseQueries.push(Query.greaterThanEqual("fecha", startDate));
+    if (endDate) baseQueries.push(Query.lessThanEqual("fecha", endDate));
+
+    const context = await getFinancialContext();
+    const databases = createAdminDatabases();
+
+    if (!needsJoinFilter) {
+      const response = await databases.listDocuments({
+        collectionId: TRANSACTIONS_COLLECTION_ID,
+        databaseId: APPWRITE_DATABASE_ID,
+        queries: [
+          ...baseQueries,
+          Query.limit(pageSize),
+          Query.offset((page - 1) * pageSize),
+        ],
+        total: true,
+      });
+      const paymentMap = await buildPaymentJoinMap(response.documents, databases);
+      const reportContext = { ...context, paymentMap };
+
+      return {
+        branches: context.branches,
+        careers: context.careers,
+        courses: context.courses,
+        filters: { endDate, startDate },
+        ok: true,
+        page,
+        pageSize,
+        total: response.total,
+        transactions: response.documents.map((transaction) =>
+          serializeTransaction(transaction, reportContext),
+        ),
+      };
+    }
+
+    const allMatching = await listAllDocuments(TRANSACTIONS_COLLECTION_ID, baseQueries);
+    const paymentMap = await buildPaymentJoinMap(allMatching, databases);
+    const reportContext = { ...context, paymentMap };
+    const filtered = allMatching
+      .map((transaction) => serializeTransaction(transaction, reportContext))
+      .filter((transaction) => {
+        if (courseId && courseId !== "todos" && transaction.courseId !== courseId) {
+          return false;
+        }
+
+        if (
+          carreraId &&
+          carreraId !== "todos" &&
+          context.courseMap.get(transaction.courseId)?.carreraId !== carreraId
+        ) {
+          return false;
+        }
+
+        return true;
+      });
+    const start = (page - 1) * pageSize;
 
     return {
-      ...result,
-      filters: {
-        endDate,
-        startDate,
-      },
+      branches: context.branches,
+      careers: context.careers,
+      courses: context.courses,
+      filters: { endDate, startDate },
       ok: true,
+      page,
+      pageSize,
+      total: filtered.length,
+      transactions: filtered.slice(start, start + pageSize),
     };
   } catch (error) {
     return {
@@ -896,7 +1029,9 @@ export async function getIncomeHistoryReport(filters = {}) {
       error: getActionError(error),
       filters: {},
       ok: false,
-      summary: { count: 0, efectivo: 0, qr: 0, total: 0 },
+      page: 1,
+      pageSize: 20,
+      total: 0,
       transactions: [],
     };
   }

@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 
+const LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 function base64UrlEncode(value) {
   return Buffer.from(value).toString("base64url");
 }
@@ -38,6 +40,7 @@ export function createPaymentLinkToken({ amount, id, type }) {
   }
 
   const payload = {
+    exp: Date.now() + LINK_TTL_MS,
     id: cleanId,
     iat: Date.now(),
     type: cleanType,
@@ -79,6 +82,12 @@ export function parsePaymentLinkToken(token) {
 
   if (!id) {
     throw new Error("El enlace de pago no es válido.");
+  }
+
+  const expiresAt = Number(payload.exp) || Number(payload.iat) + LINK_TTL_MS;
+
+  if (Date.now() > expiresAt) {
+    throw new Error("El enlace de pago expiró. Genera uno nuevo.");
   }
 
   const amount = Number(payload.amount);

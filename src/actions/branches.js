@@ -7,6 +7,7 @@ import {
   Query,
   createAdminDatabases,
 } from "@/lib/appwrite-server";
+import { requireStaffSession } from "@/lib/auth-guard";
 
 const BRANCHES_COLLECTION_ID = "branches";
 const COURSES_COLLECTION_ID = "courses";
@@ -115,6 +116,8 @@ async function listAllDocuments(collectionId, queries = []) {
 
 export async function listBranches() {
   try {
+    await requireStaffSession();
+
     const branches = await listAllDocuments(BRANCHES_COLLECTION_ID, [
       Query.select([
         "$id",
@@ -147,6 +150,8 @@ export async function createBranch(input) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
     const branch = await databases.createDocument({
       collectionId: BRANCHES_COLLECTION_ID,
@@ -177,6 +182,8 @@ export async function updateBranch(branchId, input) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
     const branch = await databases.updateDocument({
       collectionId: BRANCHES_COLLECTION_ID,
@@ -201,6 +208,8 @@ export async function deleteBranch(branchId) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
     const courses = await listAllDocuments(COURSES_COLLECTION_ID, [
       Query.equal("sucursalId", cleanBranchId),

@@ -7,6 +7,7 @@ import {
   Query,
   createAdminDatabases,
 } from "@/lib/appwrite-server";
+import { requireStaffSession } from "@/lib/auth-guard";
 
 const STUDENTS_COLLECTION_ID = "students";
 const BRANCHES_COLLECTION_ID = "branches";
@@ -387,6 +388,8 @@ async function getSerializedEnrollment(enrollmentId) {
 
 export async function listEnrollments() {
   try {
+    await requireStaffSession();
+
     const [context, enrollments] = await Promise.all([
       getEnrollmentContext(),
       listAllDocuments(ENROLLMENTS_COLLECTION_ID, [
@@ -438,6 +441,8 @@ export async function createEnrollment(input) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
     const [student, course, duplicateEnrollments] = await Promise.all([
       databases.getDocument({
@@ -563,6 +568,8 @@ export async function updateEnrollmentStatus(enrollmentId, status) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
 
     await databases.updateDocument({

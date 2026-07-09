@@ -10,6 +10,7 @@ import {
   createAdminUsers,
 } from "@/lib/appwrite-server";
 import { invokeSecureOperation } from "@/lib/secure-operations";
+import { requireStaffRole } from "@/lib/auth-guard";
 
 const STAFF_TEAM_ID = "staff";
 const STAFF_PROFILES_COLLECTION_ID = "staffProfiles";
@@ -387,6 +388,8 @@ async function deleteStaffUserLocally(userId) {
 
 export async function listStaffUsers() {
   try {
+    await requireStaffRole(["administrador"]);
+
     const result = await invokeSecureOperation("listStaffUsers");
 
     return result.useLocalFallback ? await listStaffUsersLocally() : result;
@@ -405,6 +408,8 @@ export async function createStaffUser(input) {
   const { staffUser } = validation;
 
   try {
+    await requireStaffRole(["administrador"]);
+
     const result = await invokeSecureOperation("createStaffUser", {
       input: staffUser,
     });
@@ -435,6 +440,8 @@ export async function updateStaffUser(userId, input) {
   const { staffUser } = validation;
 
   try {
+    await requireStaffRole(["administrador"]);
+
     const result = await invokeSecureOperation("updateStaffUser", {
       input: staffUser,
       userId: cleanUserId,
@@ -459,6 +466,8 @@ export async function deleteStaffUser(userId) {
   }
 
   try {
+    await requireStaffRole(["administrador"]);
+
     const result = await invokeSecureOperation("deleteStaffUser", {
       userId: cleanUserId,
     });

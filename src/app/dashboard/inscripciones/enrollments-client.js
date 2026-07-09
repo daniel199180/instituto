@@ -6,24 +6,11 @@ import {
   Check,
   GraduationCap,
   Loader2,
-  Plus,
   RefreshCw,
   Search,
   X,
 } from "lucide-react";
-import {
-  createEnrollment,
-  listEnrollments,
-  updateEnrollmentStatus,
-} from "@/actions/enrollments";
-
-const emptyForm = {
-  courseId: "",
-  motivoBeca: "",
-  studentId: "",
-  tipoBeca: "ninguna",
-  valorBeca: "0",
-};
+import { listEnrollments, updateEnrollmentStatus } from "@/actions/enrollments";
 
 const statusLabels = {
   activa: "Activa",
@@ -56,29 +43,6 @@ function normalizeEnrollment(enrollment) {
     sucursalName: enrollment.sucursalName || "Sin sucursal",
     tipoBeca: enrollment.tipoBeca || "ninguna",
     valorBeca: Number(enrollment.valorBeca || 0),
-  };
-}
-
-function normalizeCourse(course) {
-  return {
-    $id: course.$id,
-    cupoMaximo: Number(course.cupoMaximo || 0),
-    cupoOcupado: Number(course.cupoOcupado || 0),
-    estado: course.estado || "cerrado",
-    fechaInicio: course.fechaInicio || "",
-    nombre: course.nombre || "",
-    precioMensual: Number(course.precioMensual || 0),
-    sucursalId: course.sucursalId || "",
-    sucursalNombre: course.sucursalNombre || "Sin sucursal",
-  };
-}
-
-function normalizeStudent(student) {
-  return {
-    $id: student.$id,
-    documento: student.documento || "",
-    estado: student.estado || "activo",
-    nombre: student.nombre || "",
   };
 }
 
@@ -123,11 +87,7 @@ function sortEnrollments(enrollments) {
 
 export function EnrollmentsClient() {
   const [branches, setBranches] = useState([]);
-  const [courses, setCourses] = useState([]);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [enrollments, setEnrollments] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [form, setForm] = useState(emptyForm);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [branchFilter, setBranchFilter] = useState("todos");
@@ -135,24 +95,6 @@ export function EnrollmentsClient() {
   const [notice, setNotice] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
-
-  const assignableCourses = useMemo(() => {
-    return courses.filter((course) => {
-      const matchesBranch =
-        branchFilter === "todos" || course.sucursalId === branchFilter;
-
-      return (
-        matchesBranch &&
-        course.estado === "en_inscripciones" &&
-        course.fechaInicio &&
-        course.cupoOcupado < course.cupoMaximo
-      );
-    });
-  }, [branchFilter, courses]);
-
-  const selectedCourse = useMemo(() => {
-    return courses.find((course) => course.$id === form.courseId) || null;
-  }, [courses, form.courseId]);
 
   const visibleEnrollments = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -198,39 +140,16 @@ export function EnrollmentsClient() {
       if (!result.ok) {
         setError(result.error);
         setBranches([]);
-        setCourses([]);
         setEnrollments([]);
-        setStudents([]);
       } else {
         setBranches(result.branches.map(normalizeBranch));
-        setCourses(result.courses.map(normalizeCourse));
         setEnrollments(
           sortEnrollments(result.enrollments.map(normalizeEnrollment)),
         );
-        setStudents(result.students.map(normalizeStudent));
       }
 
       setIsLoading(false);
     });
-  }
-
-  function openDrawer() {
-    setError("");
-    setNotice("");
-    setForm(emptyForm);
-    setDrawerOpen(true);
-  }
-
-  function closeDrawer(force = false) {
-    if (isPending && !force) return;
-
-    setDrawerOpen(false);
-    setForm(emptyForm);
-  }
-
-  function handleFieldChange(event) {
-    const { name, value } = event.target;
-    setForm((currentForm) => ({ ...currentForm, [name]: value }));
   }
 
   function upsertEnrollment(enrollment) {
@@ -246,25 +165,6 @@ export function EnrollmentsClient() {
         : [...currentEnrollments, normalized];
 
       return sortEnrollments(nextEnrollments);
-    });
-  }
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    setError("");
-    setNotice("");
-
-    startTransition(async () => {
-      const result = await createEnrollment(form);
-
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-
-      upsertEnrollment(result.enrollment);
-      setNotice("Inscripción creada y mensualidades generadas.");
-      closeDrawer(true);
     });
   }
 
@@ -367,15 +267,6 @@ export function EnrollmentsClient() {
             size={17}
           />
           <span>Actualizar</span>
-        </button>
-
-        <button
-          className="primary-action branch-create"
-          onClick={openDrawer}
-          type="button"
-        >
-          <Plus size={18} />
-          <span>Inscribir</span>
         </button>
       </section>
 
@@ -535,150 +426,6 @@ export function EnrollmentsClient() {
           </div>
         )}
       </section>
-
-      {drawerOpen ? (
-        <div className="drawer-layer" role="presentation">
-          <button
-            aria-label="Cerrar panel"
-            className="drawer-scrim"
-            onClick={() => closeDrawer()}
-            type="button"
-          />
-          <aside
-            aria-labelledby="enrollment-drawer-title"
-            className="side-drawer"
-            role="dialog"
-          >
-            <header className="drawer-header">
-              <div>
-                <p className="eyebrow">Inscripción</p>
-                <h2 id="enrollment-drawer-title">Crear</h2>
-              </div>
-              <button
-                aria-label="Cerrar"
-                className="icon-action"
-                onClick={() => closeDrawer()}
-                type="button"
-              >
-                <X size={18} strokeWidth={1.8} />
-              </button>
-            </header>
-
-            <form className="drawer-form" onSubmit={handleSubmit}>
-              <label className="field-group">
-                <span>Estudiante</span>
-                <select
-                  className="control-input"
-                  name="studentId"
-                  onChange={handleFieldChange}
-                  required
-                  value={form.studentId}
-                >
-                  <option value="">Seleccionar</option>
-                  {students.map((student) => (
-                    <option key={student.$id} value={student.$id}>
-                      {student.nombre} - {student.documento}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="field-group">
-                <span>Curso</span>
-                <select
-                  className="control-input"
-                  name="courseId"
-                  onChange={handleFieldChange}
-                  required
-                  value={form.courseId}
-                >
-                  <option value="">Seleccionar</option>
-                  {assignableCourses.map((course) => (
-                    <option key={course.$id} value={course.$id}>
-                      {course.nombre} - {course.sucursalNombre} -{" "}
-                      {course.cupoOcupado}/{course.cupoMaximo}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {selectedCourse ? (
-                <p className="form-note">
-                  Inicio {formatDate(selectedCourse.fechaInicio)} ·{" "}
-                  {formatMoney(selectedCourse.precioMensual)}
-                </p>
-              ) : null}
-
-              <label className="field-group">
-                <span>Beca/descuento</span>
-                <select
-                  className="control-input"
-                  name="tipoBeca"
-                  onChange={handleFieldChange}
-                  value={form.tipoBeca}
-                >
-                  <option value="ninguna">Sin beca</option>
-                  <option value="porcentaje">Porcentaje</option>
-                  <option value="monto_fijo">Monto fijo</option>
-                </select>
-              </label>
-
-              {form.tipoBeca !== "ninguna" ? (
-                <>
-                  <label className="field-group">
-                    <span>Valor</span>
-                    <input
-                      className="control-input"
-                      min={0}
-                      name="valorBeca"
-                      onChange={handleFieldChange}
-                      required
-                      step="0.01"
-                      type="number"
-                      value={form.valorBeca}
-                    />
-                  </label>
-
-                  <label className="field-group">
-                    <span>Motivo</span>
-                    <textarea
-                      className="control-input textarea-input"
-                      maxLength={256}
-                      name="motivoBeca"
-                      onChange={handleFieldChange}
-                      required
-                      value={form.motivoBeca}
-                    />
-                  </label>
-                </>
-              ) : null}
-
-              <div className="drawer-actions">
-                <button
-                  className="secondary-action"
-                  disabled={isPending}
-                  onClick={() => closeDrawer()}
-                  type="button"
-                >
-                  Cancelar
-                </button>
-                <button
-                  className="primary-action"
-                  disabled={isPending}
-                  type="submit"
-                >
-                  {isPending ? (
-                    <Loader2 className="spin-icon" size={18} />
-                  ) : (
-                    <Check size={18} />
-                  )}
-                  <span>Guardar</span>
-                </button>
-              </div>
-            </form>
-          </aside>
-        </div>
-      ) : null}
     </div>
   );
 }

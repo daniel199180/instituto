@@ -277,6 +277,10 @@ export async function generateBanecoQr({ amount, description, transactionId }) {
     throw new Error("Banco Económico no devolvió la imagen del QR.");
   }
 
+  console.log(
+    `[baneco] generateQR transactionId=${transactionId} qrId=${payload.qrId} dueDate=${dueDate(settings.qrExpirationDays)}`,
+  );
+
   return {
     qrId: payload.qrId,
     qrImage: payload.qrImage,
@@ -299,6 +303,10 @@ export async function getBanecoQrStatus(qrId) {
   );
 
   assertSuccess(payload, "Banco Económico rechazó la consulta del QR.");
+
+  console.log(
+    `[baneco] statusQR qrId=${qrId} raw=${JSON.stringify(payload)}`,
+  );
 
   return {
     payment: payload.payment,

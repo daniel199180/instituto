@@ -20,6 +20,7 @@ import {
   registerPosEnrollmentQrPayment,
   registerPosPayment,
 } from "@/actions/dashboard-pos";
+import { PendingPaymentLinksSection } from "./_components/pending-payment-links";
 
 const today = new Date().toISOString().slice(0, 10);
 
@@ -429,6 +430,15 @@ export function DashboardPosClient() {
     });
   }
 
+  function closePaymentLinkDialog() {
+    setPaymentLinkDialog(null);
+    setLedgerQuery("");
+    setLedger(null);
+    setSelectedCourseId("");
+    setSelectedPaymentId("");
+    setSelectedPaymentAmount("");
+  }
+
   function buildPaymentLinkUrl(path) {
     if (typeof window === "undefined") return path;
 
@@ -622,6 +632,14 @@ export function DashboardPosClient() {
           <Banknote size={18} />
           <span>Registrar mensualidad</span>
         </button>
+        <button
+          className={mode === "enlaces" ? "is-selected" : ""}
+          onClick={() => setMode("enlaces")}
+          type="button"
+        >
+          <LinkIcon size={18} />
+          <span>Registro de pagos</span>
+        </button>
       </section>
 
       {error ? (
@@ -639,6 +657,8 @@ export function DashboardPosClient() {
             <span>Cargando caja</span>
           </div>
         </section>
+      ) : mode === "enlaces" ? (
+        <PendingPaymentLinksSection />
       ) : mode === "inscribir" ? (
         <section className="pos-workspace" aria-label="Inscripción">
           <form className="pos-panel pos-form" onSubmit={submitEnrollment}>
@@ -1189,7 +1209,7 @@ export function DashboardPosClient() {
             <div className="drawer-actions">
               <button
                 className="secondary-action"
-                onClick={() => setPaymentLinkDialog(null)}
+                onClick={closePaymentLinkDialog}
                 type="button"
               >
                 Cerrar

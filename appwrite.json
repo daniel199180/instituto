@@ -1135,6 +1135,123 @@
                     ]
                 }
             ]
+        },
+        {
+            "$id": "paymentLinks",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "paymentLinks",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "token",
+                    "type": "string",
+                    "size": 512,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "type",
+                    "type": "string",
+                    "size": 16,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "referenceId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "studentId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "studentName",
+                    "type": "string",
+                    "size": 160,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "courseName",
+                    "type": "string",
+                    "size": 160,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "sucursalNombre",
+                    "type": "string",
+                    "size": 120,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "estado",
+                    "type": "string",
+                    "size": 16,
+                    "required": false,
+                    "array": false,
+                    "default": "pendiente"
+                },
+                {
+                    "key": "amount",
+                    "type": "double",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "expiresAt",
+                    "type": "datetime",
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "paidAt",
+                    "type": "datetime",
+                    "required": false,
+                    "array": false
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_token",
+                    "type": "unique",
+                    "attributes": [
+                        "token"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_estado",
+                    "type": "key",
+                    "attributes": [
+                        "estado"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_reference",
+                    "type": "key",
+                    "attributes": [
+                        "referenceId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
         }
     ]
 }

@@ -7,6 +7,7 @@ import {
   Query,
   createAdminDatabases,
 } from "@/lib/appwrite-server";
+import { requireStaffSession } from "@/lib/auth-guard";
 
 const BRANCHES_COLLECTION_ID = "branches";
 const COURSES_COLLECTION_ID = "courses";
@@ -308,6 +309,8 @@ async function getSerializedSchedule(scheduleId) {
 
 export async function listCourseSchedules() {
   try {
+    await requireStaffSession();
+
     const [context, schedules] = await Promise.all([
       getSchedulesContext(),
       listAllDocuments(COURSE_SCHEDULES_COLLECTION_ID, [
@@ -350,6 +353,8 @@ export async function createCourseSchedule(input) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
     const courseValidation = await validateCourseAndConflicts(
       validation.schedule,
@@ -389,6 +394,8 @@ export async function updateCourseSchedule(scheduleId, input) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
     const courseValidation = await validateCourseAndConflicts(
       validation.schedule,
@@ -423,6 +430,8 @@ export async function deleteCourseSchedule(scheduleId) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
 
     await databases.deleteDocument({

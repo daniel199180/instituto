@@ -7,6 +7,7 @@ import {
   Query,
   createAdminDatabases,
 } from "@/lib/appwrite-server";
+import { requireStaffSession } from "@/lib/auth-guard";
 
 const STUDENTS_COLLECTION_ID = "students";
 const BRANCHES_COLLECTION_ID = "branches";
@@ -683,6 +684,8 @@ async function serializeStudentById(studentId) {
 
 export async function listStudents() {
   try {
+    await requireStaffSession();
+
     const [context, students] = await Promise.all([
       getStudentContext(),
       listAllDocuments(STUDENTS_COLLECTION_ID, [
@@ -730,6 +733,8 @@ export async function createStudent(input) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
     const assignmentResult = await validateAssignment(validation.assignment);
 
@@ -782,6 +787,8 @@ export async function updateStudent(studentId, input) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
     const assignmentResult = await validateAssignment(validation.assignment, {
       studentId: cleanStudentId,
@@ -831,6 +838,8 @@ export async function deleteStudent(studentId) {
   }
 
   try {
+    await requireStaffSession();
+
     const databases = createAdminDatabases();
     const [enrollments, payments] = await Promise.all([
       listAllDocuments(ENROLLMENTS_COLLECTION_ID, [
