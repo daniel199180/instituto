@@ -4,13 +4,14 @@ import { createSessionClient } from "@/lib/appwrite-server";
 import {
   getAuthenticatedUser,
   getStaffSessionUser,
+  getTeacherSessionUser,
   SESSION_COOKIE_NAME,
 } from "@/lib/auth-guard";
 import { getPrimaryStaffRole } from "@/lib/roles";
 
 export async function GET() {
-  // Staff carry a role (used to filter the dashboard nav); teachers and other
-  // logged-in accounts have no staff role.
+  // Staff carry a role (used to filter the dashboard nav); teachers are
+  // flagged so the shell can send them to their /docente portal.
   const staffUser = await getStaffSessionUser();
 
   if (staffUser) {
@@ -19,8 +20,24 @@ export async function GET() {
       user: {
         $id: staffUser.$id,
         email: staffUser.email,
+        isTeacher: false,
         name: staffUser.name,
         role: getPrimaryStaffRole(staffUser.roles),
+      },
+    });
+  }
+
+  const teacher = await getTeacherSessionUser();
+
+  if (teacher) {
+    return NextResponse.json({
+      ok: true,
+      user: {
+        $id: teacher.$id,
+        email: teacher.email,
+        isTeacher: true,
+        name: teacher.teacherName || teacher.name,
+        role: null,
       },
     });
   }
@@ -33,7 +50,13 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
-    user: { $id: user.$id, email: user.email, name: user.name, role: null },
+    user: {
+      $id: user.$id,
+      email: user.email,
+      isTeacher: false,
+      name: user.name,
+      role: null,
+    },
   });
 }
 

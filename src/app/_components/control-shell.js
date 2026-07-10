@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
@@ -142,12 +142,28 @@ export function PrivatePage({
   navMode = "staff",
   title = "Panel",
 }) {
+  const router = useRouter();
   const [sessionStatus, setSessionStatus] = useState("checking");
   const [user, setUser] = useState(null);
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Teachers belong in /docente and staff in /dashboard; if a logged-in user
+  // lands on the wrong portal (e.g. a docente logging in at /dashboard),
+  // send them to their own portal instead of showing an empty shell.
+  const wrongPortal = Boolean(
+    user &&
+      ((navMode === "staff" && !user.role && user.isTeacher) ||
+        (navMode === "teacher" && !user.isTeacher && user.role)),
+  );
+
+  useEffect(() => {
+    if (!wrongPortal) return;
+
+    router.replace(navMode === "staff" ? "/docente" : "/dashboard");
+  }, [navMode, router, wrongPortal]);
 
   const checkSession = useCallback(async () => {
     setSessionStatus("checking");
@@ -227,7 +243,7 @@ export function PrivatePage({
     }
   }
 
-  if (sessionStatus === "checking") {
+  if (sessionStatus === "checking" || wrongPortal) {
     return <LoadingScreen />;
   }
 

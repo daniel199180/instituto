@@ -1,8 +1,45 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { AppwriteException } from "node-appwrite";
-import { createAdminAccount, createAdminUsers } from "@/lib/appwrite-server";
+import {
+  APPWRITE_DATABASE_ID,
+  Query,
+  createAdminAccount,
+  createAdminDatabases,
+  createAdminTeams,
+  createAdminUsers,
+} from "@/lib/appwrite-server";
 import { SESSION_COOKIE_NAME } from "@/lib/auth-guard";
+import { getPrimaryStaffRole } from "@/lib/roles";
+
+// Resolves what the account is right after login: its staff role (if any)
+// and whether it's a linked teacher, so the client can route it to the
+// correct portal without an extra round trip.
+async function resolveAccessProfile(userId) {
+  const teams = createAdminTeams();
+  const memberships = await teams.listMemberships({
+    queries: [Query.equal("userId", userId), Query.limit(1)],
+    teamId: "staff",
+  });
+  const role = getPrimaryStaffRole(memberships.memberships[0]?.roles || []);
+
+  if (role) {
+    return { isTeacher: false, role };
+  }
+
+  const databases = createAdminDatabases();
+  const teachers = await databases.listDocuments({
+    collectionId: "teachers",
+    databaseId: APPWRITE_DATABASE_ID,
+    queries: [Query.equal("userId", userId), Query.limit(1)],
+  });
+  const teacher = teachers.documents[0];
+
+  return {
+    isTeacher: Boolean(teacher && teacher.estado !== "inactivo"),
+    role: null,
+  };
+}
 
 function getErrorMessage(error) {
   if (error instanceof AppwriteException) {
@@ -63,11 +100,20 @@ export async function POST(request) {
     });
 
     const users = createAdminUsers();
-    const user = await users.get({ userId: session.userId });
+    const [user, access] = await Promise.all([
+      users.get({ userId: session.userId }),
+      resolveAccessProfile(session.userId),
+    ]);
 
     return NextResponse.json({
       ok: true,
-      user: { $id: user.$id, email: user.email, name: user.name },
+      user: {
+        $id: user.$id,
+        email: user.email,
+        isTeacher: access.isTeacher,
+        name: user.name,
+        role: access.role,
+      },
     });
   } catch (error) {
     return NextResponse.json(
