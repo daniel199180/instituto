@@ -13,9 +13,14 @@ import { invokeSecureOperation } from "@/lib/secure-operations";
 import { requireStaffRole } from "@/lib/auth-guard";
 
 const STAFF_TEAM_ID = "staff";
+const DOCENTES_TEAM_ID = "docentes";
 const STAFF_PROFILES_COLLECTION_ID = "staffProfiles";
 const BRANCHES_COLLECTION_ID = "branches";
+const TEACHERS_COLLECTION_ID = "teachers";
 const VALID_STAFF_ROLES = new Set(["administrador", "cajero", "academico"]);
+// "docente" is a role too, but it lives in the separate "docentes" team so it
+// never grants staff access; requireStaffSession only checks the staff team.
+const VALID_ROLES = new Set([...VALID_STAFF_ROLES, "docente"]);
 const VALID_USER_STATUSES = new Set(["activo", "inactivo"]);
 
 function toCleanString(value) {
@@ -26,13 +31,18 @@ function normalizeUserStatus(status) {
   return status === "inactivo" ? "inactivo" : "activo";
 }
 
+function teamForRole(role) {
+  return role === "docente" ? DOCENTES_TEAM_ID : STAFF_TEAM_ID;
+}
+
 function getPrimaryRole(roles = []) {
-  return roles.find((role) => VALID_STAFF_ROLES.has(role)) || "cajero";
+  return roles.find((role) => VALID_ROLES.has(role)) || "cajero";
 }
 
 function roleLabel(role) {
   if (role === "administrador") return "Administrador";
   if (role === "academico") return "Encargado Académico";
+  if (role === "docente") return "Docente";
   return "Cajero";
 }
 
@@ -65,6 +75,8 @@ function serializeStaffUser({ branchMap, membership, profile, user }) {
 
 function validateStaffUserInput(input, mode = "create") {
   const staffUser = {
+    apellido: toCleanString(input?.apellido),
+    documento: toCleanString(input?.documento),
     email: toCleanString(input?.email),
     nombre: toCleanString(input?.nombre),
     password: typeof input?.password === "string" ? input.password : "",
@@ -89,12 +101,30 @@ function validateStaffUserInput(input, mode = "create") {
     return { error: "Ingresa un correo válido." };
   }
 
-  if (!VALID_STAFF_ROLES.has(staffUser.role)) {
+  if (!VALID_ROLES.has(staffUser.role)) {
     return { error: "Selecciona un rol válido." };
   }
 
   if (staffUser.role === "cajero" && !staffUser.sucursalId) {
     return { error: "Selecciona la sucursal del cajero." };
+  }
+
+  if (staffUser.role === "docente") {
+    if (!staffUser.apellido) {
+      return { error: "Ingresa el apellido del docente." };
+    }
+
+    if (staffUser.apellido.length > 128) {
+      return { error: "El apellido no puede superar 128 caracteres." };
+    }
+
+    if (mode === "create" && !staffUser.documento) {
+      return { error: "Ingresa el documento del docente." };
+    }
+
+    if (staffUser.documento.length > 32) {
+      return { error: "El documento no puede superar 32 caracteres." };
+    }
   }
 
   if (mode === "create" && staffUser.password.length < 8) {
@@ -108,6 +138,13 @@ function validateStaffUserInput(input, mode = "create") {
   if (!VALID_USER_STATUSES.has(staffUser.status)) {
     return { error: "Selecciona un estado válido." };
   }
+
+  // The Auth account keeps a single display name; for docentes it's the full
+  // "nombre apellido" so their teacher record and login stay consistent.
+  staffUser.displayName =
+    staffUser.role === "docente"
+      ? `${staffUser.nombre} ${staffUser.apellido}`.trim()
+      : staffUser.nombre;
 
   return { staffUser };
 }
@@ -229,13 +266,96 @@ async function upsertStaffProfile(userId, sucursalId) {
   });
 }
 
+// Keeps the Docentes collection in sync when a docente account is created or
+// edited from Usuarios, so the teacher is registered once and appears in both
+// places. Matched by teachers.userId (the same field the teacher portal uses).
+async function upsertTeacherRecord(userId, staffUser) {
+  const databases = createAdminDatabases();
+  const existing = await databases.listDocuments({
+    collectionId: TEACHERS_COLLECTION_ID,
+    databaseId: APPWRITE_DATABASE_ID,
+    queries: [Query.equal("userId", userId), Query.limit(1)],
+    total: false,
+  });
+  const data = {
+    apellido: staffUser.apellido,
+    email: staffUser.email,
+    estado: staffUser.status === "inactivo" ? "inactivo" : "activo",
+    nombre: staffUser.nombre,
+    userId,
+  };
+
+  if (staffUser.documento) {
+    data.documento = staffUser.documento;
+  }
+
+  if (existing.documents[0]) {
+    return databases.updateDocument({
+      collectionId: TEACHERS_COLLECTION_ID,
+      databaseId: APPWRITE_DATABASE_ID,
+      data,
+      documentId: existing.documents[0].$id,
+    });
+  }
+
+  return databases.createDocument({
+    collectionId: TEACHERS_COLLECTION_ID,
+    databaseId: APPWRITE_DATABASE_ID,
+    data,
+    documentId: ID.unique(),
+    permissions: [],
+  });
+}
+
+async function setTeacherRecordStatus(userId, estado) {
+  const databases = createAdminDatabases();
+  const existing = await databases.listDocuments({
+    collectionId: TEACHERS_COLLECTION_ID,
+    databaseId: APPWRITE_DATABASE_ID,
+    queries: [Query.equal("userId", userId), Query.limit(1)],
+    total: false,
+  });
+
+  if (!existing.documents[0]) return;
+
+  await databases.updateDocument({
+    collectionId: TEACHERS_COLLECTION_ID,
+    databaseId: APPWRITE_DATABASE_ID,
+    data: { estado },
+    documentId: existing.documents[0].$id,
+  });
+}
+
+// Locates a user's membership across both the staff and docentes teams, so
+// edit/delete work regardless of which one they belong to.
+async function findUserMembership(userId) {
+  const teams = createAdminTeams();
+
+  for (const teamId of [STAFF_TEAM_ID, DOCENTES_TEAM_ID]) {
+    const memberships = await teams.listMemberships({
+      queries: [Query.equal("userId", userId), Query.limit(1)],
+      teamId,
+      total: false,
+    });
+
+    if (memberships.memberships[0]) {
+      return { membership: memberships.memberships[0], teamId };
+    }
+  }
+
+  return { membership: null, teamId: null };
+}
+
 async function listStaffUsersLocally() {
   const users = createAdminUsers();
-  const [{ branchMap, branches }, profileMap, memberships] = await Promise.all([
-    getBranchMap(),
-    getProfileMap(),
-    listAllMemberships(STAFF_TEAM_ID),
-  ]);
+  const [{ branchMap, branches }, profileMap, staffMemberships, docenteMemberships] =
+    await Promise.all([
+      getBranchMap(),
+      getProfileMap(),
+      listAllMemberships(STAFF_TEAM_ID),
+      listAllMemberships(DOCENTES_TEAM_ID),
+    ]);
+  const memberships = [...staffMemberships, ...docenteMemberships];
   const staffUsers = await Promise.all(
     memberships.map(async (membership) => {
       try {
@@ -268,19 +388,25 @@ async function createStaffUserLocally(staffUser) {
   const { branchMap } = await getBranchMap();
   const user = await users.create({
     email: staffUser.email,
-    name: staffUser.nombre,
+    name: staffUser.displayName,
     password: staffUser.password,
     userId: ID.unique(),
   });
   const membership = await teams.createMembership({
     roles: [staffUser.role],
-    teamId: STAFF_TEAM_ID,
+    teamId: teamForRole(staffUser.role),
     userId: user.$id,
   });
-  const profile = await upsertStaffProfile(
-    user.$id,
-    staffUser.role === "cajero" ? staffUser.sucursalId : "",
-  );
+  let profile = null;
+
+  if (staffUser.role === "docente") {
+    await upsertTeacherRecord(user.$id, staffUser);
+  } else {
+    profile = await upsertStaffProfile(
+      user.$id,
+      staffUser.role === "cajero" ? staffUser.sucursalId : "",
+    );
+  }
 
   if (staffUser.status === "inactivo") {
     await users.updateStatus({ status: false, userId: user.$id });
@@ -297,19 +423,27 @@ async function updateStaffUserLocally(userId, staffUser) {
   const users = createAdminUsers();
   const teams = createAdminTeams();
   const { branchMap } = await getBranchMap();
-  const memberships = await teams.listMemberships({
-    queries: [Query.equal("userId", userId), Query.limit(1)],
-    teamId: STAFF_TEAM_ID,
-    total: false,
-  });
-  const membership = memberships.memberships[0];
+  const { membership, teamId } = await findUserMembership(userId);
 
   if (!membership) {
-    return { error: "El usuario no pertenece al equipo staff.", ok: false };
+    return { error: "El usuario no pertenece a ningún equipo.", ok: false };
+  }
+
+  const isDocenteTeam = teamId === DOCENTES_TEAM_ID;
+
+  // A docente and a staff member live in different teams; switching between
+  // them would require moving teams and rebuilding their records, so it's
+  // blocked here — delete and re-create instead.
+  if (isDocenteTeam !== (staffUser.role === "docente")) {
+    return {
+      error:
+        "No se puede cambiar entre docente y personal. Borra el usuario y créalo con el nuevo rol.",
+      ok: false,
+    };
   }
 
   let user = await users.updateName({
-    name: staffUser.nombre,
+    name: staffUser.displayName,
     userId,
   });
 
@@ -335,12 +469,18 @@ async function updateStaffUserLocally(userId, staffUser) {
   const updatedMembership = await teams.updateMembership({
     membershipId: membership.$id,
     roles: [staffUser.role],
-    teamId: STAFF_TEAM_ID,
+    teamId,
   });
-  const profile = await upsertStaffProfile(
-    userId,
-    staffUser.role === "cajero" ? staffUser.sucursalId : "",
-  );
+  let profile = null;
+
+  if (isDocenteTeam) {
+    await upsertTeacherRecord(userId, staffUser);
+  } else {
+    profile = await upsertStaffProfile(
+      userId,
+      staffUser.role === "cajero" ? staffUser.sucursalId : "",
+    );
+  }
 
   return {
     ok: true,
@@ -355,23 +495,22 @@ async function updateStaffUserLocally(userId, staffUser) {
 
 async function deleteStaffUserLocally(userId) {
   const users = createAdminUsers();
-  const teams = createAdminTeams();
   const { branchMap } = await getBranchMap();
-  const memberships = await teams.listMemberships({
-    queries: [Query.equal("userId", userId), Query.limit(1)],
-    teamId: STAFF_TEAM_ID,
-    total: false,
-  });
-  const membership = memberships.memberships[0];
+  const { membership, teamId } = await findUserMembership(userId);
 
   if (!membership) {
-    return { error: "El usuario no pertenece al equipo staff.", ok: false };
+    return { error: "El usuario no pertenece a ningún equipo.", ok: false };
   }
 
   const user = await users.updateStatus({
     status: false,
     userId,
   });
+
+  if (teamId === DOCENTES_TEAM_ID) {
+    await setTeacherRecordStatus(userId, "inactivo");
+  }
+
   const profileMap = await getProfileMap();
 
   return {
@@ -418,6 +557,7 @@ export async function createStaffUser(input) {
       : result;
 
     revalidatePath("/dashboard/usuarios");
+    revalidatePath("/dashboard/docentes");
 
     return finalResult;
   } catch (error) {
@@ -451,6 +591,7 @@ export async function updateStaffUser(userId, input) {
       : result;
 
     revalidatePath("/dashboard/usuarios");
+    revalidatePath("/dashboard/docentes");
 
     return finalResult;
   } catch (error) {
@@ -476,6 +617,7 @@ export async function deleteStaffUser(userId) {
       : result;
 
     revalidatePath("/dashboard/usuarios");
+    revalidatePath("/dashboard/docentes");
 
     return finalResult;
   } catch (error) {

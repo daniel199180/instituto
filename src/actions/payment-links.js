@@ -7,7 +7,7 @@ import {
   Query,
   createAdminDatabases,
 } from "@/lib/appwrite-server";
-import { requireStaffSession } from "@/lib/auth-guard";
+import { requireStaffRole } from "@/lib/auth-guard";
 
 const PAYMENT_LINKS_COLLECTION_ID = "paymentLinks";
 const PAYMENTS_COLLECTION_ID = "payments";
@@ -50,7 +50,7 @@ export async function createPaymentLinkRecord({
   type,
 }) {
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador", "cajero"]);
 
     const databases = createAdminDatabases();
     const expiresAt = new Date(Date.now() + LINK_TTL_MS).toISOString();
@@ -84,7 +84,7 @@ export async function createPaymentLinkRecord({
 
 export async function listPendingPaymentLinks() {
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador", "cajero"]);
 
     const databases = createAdminDatabases();
     const response = await databases.listDocuments({
@@ -150,7 +150,7 @@ async function isReferenceFullyPaid(databases, link) {
  */
 export async function refreshPaymentLinkStatus(linkId) {
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador", "cajero"]);
 
     const databases = createAdminDatabases();
     const link = await databases.getDocument({

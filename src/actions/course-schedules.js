@@ -7,7 +7,7 @@ import {
   Query,
   createAdminDatabases,
 } from "@/lib/appwrite-server";
-import { requireStaffSession } from "@/lib/auth-guard";
+import { requireStaffRole } from "@/lib/auth-guard";
 
 const BRANCHES_COLLECTION_ID = "branches";
 const COURSES_COLLECTION_ID = "courses";
@@ -309,7 +309,7 @@ async function getSerializedSchedule(scheduleId) {
 
 export async function listCourseSchedules() {
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador", "cajero", "academico"]);
 
     const [context, schedules] = await Promise.all([
       getSchedulesContext(),
@@ -353,7 +353,7 @@ export async function createCourseSchedule(input) {
   }
 
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador", "cajero", "academico"]);
 
     const databases = createAdminDatabases();
     const courseValidation = await validateCourseAndConflicts(
@@ -394,7 +394,7 @@ export async function updateCourseSchedule(scheduleId, input) {
   }
 
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador", "cajero", "academico"]);
 
     const databases = createAdminDatabases();
     const courseValidation = await validateCourseAndConflicts(
@@ -430,7 +430,7 @@ export async function deleteCourseSchedule(scheduleId) {
   }
 
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador", "cajero", "academico"]);
 
     const databases = createAdminDatabases();
 

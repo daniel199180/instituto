@@ -2,6 +2,8 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import {
+  APPWRITE_DATABASE_ID,
+  createAdminDatabases,
   createAdminTeams,
   createSessionClient,
   Query,
@@ -9,6 +11,7 @@ import {
 
 export const SESSION_COOKIE_NAME = "ci_session";
 const STAFF_TEAM_ID = "staff";
+const TEACHERS_COLLECTION_ID = "teachers";
 
 /**
  * Confirms the session cookie maps to a real, currently-valid Appwrite
@@ -75,6 +78,44 @@ export async function getStaffSessionUser() {
 }
 
 /**
+ * Same as getAuthenticatedUser, but additionally resolves the caller's own
+ * "teachers" record (matched by teachers.userId, the manual link set from
+ * the staff Docentes page). Returns null for anyone logged in who isn't
+ * linked to an active teacher record, so teacher-only actions never run on
+ * behalf of a student/guardian or a not-yet-linked account.
+ */
+export async function getTeacherSessionUser() {
+  const user = await getAuthenticatedUser();
+
+  if (!user) {
+    return null;
+  }
+
+  try {
+    const databases = createAdminDatabases();
+    const response = await databases.listDocuments({
+      collectionId: TEACHERS_COLLECTION_ID,
+      databaseId: APPWRITE_DATABASE_ID,
+      queries: [Query.equal("userId", user.$id), Query.limit(1)],
+    });
+    const teacher = response.documents[0];
+
+    if (!teacher || teacher.estado === "inactivo") {
+      return null;
+    }
+
+    return {
+      ...user,
+      teacherId: teacher.$id,
+      teacherName: `${teacher.nombre || ""} ${teacher.apellido || ""}`.trim(),
+    };
+  } catch (error) {
+    console.error("getTeacherSessionUser failed:", error?.message || error);
+    return null;
+  }
+}
+
+/**
  * Guard for every "use server" action that touches the admin Appwrite
  * clients (full privileges). Must be the first call in each action so an
  * unauthenticated or non-staff caller never reaches the admin clients,
@@ -98,4 +139,14 @@ export async function requireStaffRole(allowedRoles) {
   }
 
   return user;
+}
+
+export async function requireTeacherSession() {
+  const teacher = await getTeacherSessionUser();
+
+  if (!teacher) {
+    throw new Error("No autorizado. Inicia sesión como docente nuevamente.");
+  }
+
+  return teacher;
 }

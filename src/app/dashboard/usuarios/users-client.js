@@ -20,6 +20,8 @@ import {
 } from "@/actions/staff-users";
 
 const emptyForm = {
+  apellido: "",
+  documento: "",
   email: "",
   nombre: "",
   password: "",
@@ -37,6 +39,7 @@ const roleLabels = {
   administrador: "Administrador",
   academico: "Encargado Académico",
   cajero: "Cajero",
+  docente: "Docente",
 };
 
 function normalizeUser(user) {
@@ -141,9 +144,17 @@ export function UsersClient() {
     setError("");
     setNotice("");
     setEditingUser(user);
+
+    // A docente's display name is "Nombre Apellido"; split it back so the
+    // form fields prefill correctly. Documento isn't required on edit.
+    const [firstName, ...rest] =
+      user.role === "docente" ? user.nombre.split(" ") : [user.nombre];
+
     setForm({
+      apellido: user.role === "docente" ? rest.join(" ") : "",
+      documento: "",
       email: user.email,
-      nombre: user.nombre,
+      nombre: user.role === "docente" ? firstName : user.nombre,
       password: "",
       role: user.role,
       status: user.status,
@@ -469,6 +480,20 @@ export function UsersClient() {
                 />
               </label>
 
+              {form.role === "docente" ? (
+                <label className="field-group">
+                  <span>Apellido</span>
+                  <input
+                    className="control-input"
+                    maxLength={128}
+                    name="apellido"
+                    onChange={handleFieldChange}
+                    required
+                    value={form.apellido}
+                  />
+                </label>
+              ) : null}
+
               <label className="field-group">
                 <span>Correo</span>
                 <input
@@ -509,8 +534,26 @@ export function UsersClient() {
                   <option value="administrador">Administrador</option>
                   <option value="cajero">Cajero</option>
                   <option value="academico">Encargado Académico</option>
+                  <option value="docente">Docente</option>
                 </select>
               </label>
+
+              {form.role === "docente" ? (
+                <label className="field-group">
+                  <span>Documento</span>
+                  <input
+                    className="control-input"
+                    maxLength={32}
+                    name="documento"
+                    onChange={handleFieldChange}
+                    placeholder={
+                      drawerMode === "edit" ? "Dejar sin cambios" : ""
+                    }
+                    required={drawerMode !== "edit"}
+                    value={form.documento}
+                  />
+                </label>
+              ) : null}
 
               {form.role === "cajero" ? (
                 <label className="field-group">

@@ -8,7 +8,7 @@ import {
   createAdminDatabases,
 } from "@/lib/appwrite-server";
 import { invokeSecureOperation } from "@/lib/secure-operations";
-import { requireStaffSession } from "@/lib/auth-guard";
+import { requireStaffRole } from "@/lib/auth-guard";
 
 const PAYMENTS_COLLECTION_ID = "payments";
 const TRANSACTIONS_COLLECTION_ID = "transactions";
@@ -545,7 +545,7 @@ async function registerTransactionLocally(paymentId, input = {}) {
 
 export async function listPayments(filters = {}) {
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador", "cajero"]);
 
     const [context, payments] = await Promise.all([
       getFinancialContext(),
@@ -584,7 +584,7 @@ export async function registerTransaction(paymentId, input = {}) {
   }
 
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador", "cajero"]);
 
     const result = await invokeSecureOperation("registerTransaction", {
       input,
@@ -607,7 +607,7 @@ export async function registerTransaction(paymentId, input = {}) {
 
 export async function listDebtors(filters = {}) {
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador", "cajero"]);
 
     const context = await getFinancialContext();
     const now = new Date().toISOString();
@@ -846,7 +846,7 @@ async function listReportTransactions(filters = {}) {
 
 export async function getDailyIncomeReport(dateInput = "") {
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador", "cajero"]);
 
     const range = getDateRangeForInput(dateInput);
     const result = await listReportTransactions({
@@ -904,7 +904,7 @@ async function buildPaymentJoinMap(transactions, databases) {
  */
 export async function getIncomeHistoryReport(filters = {}, pagination = {}) {
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador"]);
 
     const page = Math.max(1, Math.trunc(Number(pagination.page)) || 1);
     const pageSize = Math.min(

@@ -7,7 +7,7 @@ import {
   Query,
   createAdminDatabases,
 } from "@/lib/appwrite-server";
-import { requireStaffSession } from "@/lib/auth-guard";
+import { requireStaffRole } from "@/lib/auth-guard";
 
 const CAREERS_COLLECTION_ID = "careers";
 const BRANCHES_COLLECTION_ID = "branches";
@@ -153,7 +153,7 @@ async function getBranchMap() {
 
 export async function listCareers() {
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador", "cajero"]);
 
     const [{ branchMap, branches }, careers] = await Promise.all([
       getBranchMap(),
@@ -195,7 +195,7 @@ export async function createCareer(input) {
   }
 
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador"]);
 
     const databases = createAdminDatabases();
     const { branchMap } = await getBranchMap();
@@ -228,7 +228,7 @@ export async function updateCareer(careerId, input) {
   }
 
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador"]);
 
     const databases = createAdminDatabases();
     const { branchMap } = await getBranchMap();
@@ -255,7 +255,7 @@ export async function deleteCareer(careerId) {
   }
 
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador"]);
 
     const databases = createAdminDatabases();
     const courses = await listAllDocuments(COURSES_COLLECTION_ID, [

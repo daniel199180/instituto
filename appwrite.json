@@ -1252,6 +1252,104 @@
                     ]
                 }
             ]
+        },
+        {
+            "$id": "studentAttendance",
+            "$permissions": [],
+            "databaseId": "main",
+            "name": "studentAttendance",
+            "enabled": true,
+            "documentSecurity": false,
+            "attributes": [
+                {
+                    "key": "courseId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "studentId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "teacherId",
+                    "type": "string",
+                    "size": 64,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "fecha",
+                    "type": "string",
+                    "size": 10,
+                    "required": true,
+                    "array": false
+                },
+                {
+                    "key": "estado",
+                    "type": "string",
+                    "size": 16,
+                    "required": false,
+                    "array": false,
+                    "default": "presente"
+                },
+                {
+                    "key": "notas",
+                    "type": "string",
+                    "size": 256,
+                    "required": false,
+                    "array": false
+                },
+                {
+                    "key": "registradoPor",
+                    "type": "string",
+                    "size": 128,
+                    "required": false,
+                    "array": false
+                }
+            ],
+            "indexes": [
+                {
+                    "key": "idx_unique_session",
+                    "type": "unique",
+                    "attributes": [
+                        "courseId",
+                        "studentId",
+                        "fecha"
+                    ],
+                    "orders": [
+                        "ASC",
+                        "ASC",
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_course_fecha",
+                    "type": "key",
+                    "attributes": [
+                        "courseId",
+                        "fecha"
+                    ],
+                    "orders": [
+                        "ASC",
+                        "ASC"
+                    ]
+                },
+                {
+                    "key": "idx_student",
+                    "type": "key",
+                    "attributes": [
+                        "studentId"
+                    ],
+                    "orders": [
+                        "ASC"
+                    ]
+                }
+            ]
         }
     ]
 }

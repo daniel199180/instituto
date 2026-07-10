@@ -11,6 +11,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
   ClipboardList,
   Clock3,
   Eye,
@@ -29,6 +30,7 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
+import { canRoleAccessPath } from "@/lib/roles";
 
 const staffNavSections = [
   {
@@ -46,6 +48,11 @@ const staffNavSections = [
         icon: ClipboardList,
       },
       { label: "Horarios", href: "/dashboard/horarios", icon: CalendarDays },
+      {
+        label: "Asistencia",
+        href: "/dashboard/asistencia",
+        icon: ClipboardCheck,
+      },
     ],
   },
   {
@@ -73,8 +80,8 @@ const staffNavSections = [
         icon: Settings,
       },
       {
-        label: "Liquidación docente",
-        href: "/dashboard/liquidacion-docentes",
+        label: "Sueldos",
+        href: "/dashboard/sueldos",
         icon: BadgeDollarSign,
       },
     ],
@@ -375,7 +382,20 @@ function PrivateArea({
   user,
 }) {
   const pathname = usePathname();
-  const navSections = navMode === "teacher" ? teacherNavSections : staffNavSections;
+  const navSections = useMemo(() => {
+    if (navMode === "teacher") return teacherNavSections;
+
+    // Show only the pages the staff member's role is allowed to see, and drop
+    // any section left with no visible items.
+    return staffNavSections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) =>
+          canRoleAccessPath(user.role, item.href),
+        ),
+      }))
+      .filter((section) => section.items.length);
+  }, [navMode, user.role]);
 
   const initials = useMemo(() => {
     const source = user.name || user.email || "CI";
@@ -386,6 +406,11 @@ function PrivateArea({
       .map((part) => part[0]?.toUpperCase())
       .join("");
   }, [user]);
+
+  // Blocks URL access to a page the role can't see (UX layer; the server
+  // actions enforce the same rule as the real security boundary).
+  const isPathAllowed =
+    navMode === "teacher" || canRoleAccessPath(user.role, pathname);
 
   return (
     <main className="private-shell">
@@ -465,7 +490,14 @@ function PrivateArea({
         </header>
 
         <div className="private-canvas" aria-label={ariaLabel}>
-          {children}
+          {isPathAllowed ? (
+            children
+          ) : (
+            <div className="table-state">
+              <LockKeyhole size={22} />
+              <span>No tienes acceso a esta sección.</span>
+            </div>
+          )}
         </div>
       </section>
     </main>

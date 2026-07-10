@@ -1,5 +1,14 @@
 import { PrivatePage } from "../../_components/control-shell";
+import { MyAttendanceClient } from "./my-attendance-client";
 
-export default function MyAttendancePage() {
-  return <PrivatePage navMode="teacher" title="Mi asistencia" />;
+export default async function MyAttendancePage({ searchParams }) {
+  const params = await searchParams;
+  const initialCourseId =
+    typeof params?.courseId === "string" ? params.courseId : "";
+
+  return (
+    <PrivatePage ariaLabel="Mi asistencia" navMode="teacher" title="Mi asistencia">
+      <MyAttendanceClient initialCourseId={initialCourseId} />
+    </PrivatePage>
+  );
 }

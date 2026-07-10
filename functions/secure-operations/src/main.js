@@ -2,6 +2,8 @@ import { Client, Databases, ID, Query, Teams, Users } from "node-appwrite";
 
 const DATABASE_ID = process.env.APPWRITE_DATABASE_ID || "main";
 const STAFF_TEAM_ID = "staff";
+const DOCENTES_TEAM_ID = "docentes";
+const TEACHERS_COLLECTION_ID = "teachers";
 const PAYMENTS_COLLECTION_ID = "payments";
 const TRANSACTIONS_COLLECTION_ID = "transactions";
 const STUDENTS_COLLECTION_ID = "students";
@@ -9,7 +11,9 @@ const COURSES_COLLECTION_ID = "courses";
 const BRANCHES_COLLECTION_ID = "branches";
 const CAREERS_COLLECTION_ID = "careers";
 const STAFF_PROFILES_COLLECTION_ID = "staffProfiles";
+const STUDENT_ATTENDANCE_COLLECTION_ID = "studentAttendance";
 const SYSTEM_CASHIER_ID = "sistema";
+const VALID_ATTENDANCE_STATES = new Set(["presente", "ausente", "justificado"]);
 const VALID_PAYMENT_METHODS = new Set(["efectivo", "qr"]);
 const VALID_PAYMENT_STATUSES = new Set([
   "pendiente",
@@ -19,6 +23,7 @@ const VALID_PAYMENT_STATUSES = new Set([
 ]);
 const VALID_TRANSACTION_STATUSES = new Set(["valida", "anulada"]);
 const VALID_STAFF_ROLES = new Set(["administrador", "cajero", "academico"]);
+const VALID_ROLES = new Set([...VALID_STAFF_ROLES, "docente"]);
 const VALID_USER_STATUSES = new Set(["activo", "inactivo"]);
 
 function getEnv(name, fallback = "") {
@@ -65,13 +70,18 @@ function normalizeUserStatus(status) {
   return status === "inactivo" ? "inactivo" : "activo";
 }
 
+function teamForRole(role) {
+  return role === "docente" ? DOCENTES_TEAM_ID : STAFF_TEAM_ID;
+}
+
 function getPrimaryRole(roles = []) {
-  return roles.find((role) => VALID_STAFF_ROLES.has(role)) || "cajero";
+  return roles.find((role) => VALID_ROLES.has(role)) || "cajero";
 }
 
 function roleLabel(role) {
   if (role === "administrador") return "Administrador";
   if (role === "academico") return "Encargado Académico";
+  if (role === "docente") return "Docente";
   return "Cajero";
 }
 
@@ -143,6 +153,8 @@ function validateRegisterTransactionInput(payment, input = {}) {
 
 function validateStaffUserInput(input, mode = "create") {
   const staffUser = {
+    apellido: toCleanString(input?.apellido),
+    documento: toCleanString(input?.documento),
     email: toCleanString(input?.email),
     nombre: toCleanString(input?.nombre),
     password: typeof input?.password === "string" ? input.password : "",
@@ -159,11 +171,25 @@ function validateStaffUserInput(input, mode = "create") {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(staffUser.email)) {
     return { error: "Ingresa un correo válido." };
   }
-  if (!VALID_STAFF_ROLES.has(staffUser.role)) {
+  if (!VALID_ROLES.has(staffUser.role)) {
     return { error: "Selecciona un rol válido." };
   }
   if (staffUser.role === "cajero" && !staffUser.sucursalId) {
     return { error: "Selecciona la sucursal del cajero." };
+  }
+  if (staffUser.role === "docente") {
+    if (!staffUser.apellido) {
+      return { error: "Ingresa el apellido del docente." };
+    }
+    if (staffUser.apellido.length > 128) {
+      return { error: "El apellido no puede superar 128 caracteres." };
+    }
+    if (mode === "create" && !staffUser.documento) {
+      return { error: "Ingresa el documento del docente." };
+    }
+    if (staffUser.documento.length > 32) {
+      return { error: "El documento no puede superar 32 caracteres." };
+    }
   }
   if (mode === "create" && staffUser.password.length < 8) {
     return { error: "La contraseña debe tener al menos 8 caracteres." };
@@ -174,6 +200,11 @@ function validateStaffUserInput(input, mode = "create") {
   if (!VALID_USER_STATUSES.has(staffUser.status)) {
     return { error: "Selecciona un estado válido." };
   }
+
+  staffUser.displayName =
+    staffUser.role === "docente"
+      ? `${staffUser.nombre} ${staffUser.apellido}`.trim()
+      : staffUser.nombre;
 
   return { staffUser };
 }
@@ -428,6 +459,77 @@ async function upsertStaffProfile(databases, userId, sucursalId) {
   });
 }
 
+async function upsertTeacherRecord(databases, userId, staffUser) {
+  const existing = await databases.listDocuments({
+    collectionId: TEACHERS_COLLECTION_ID,
+    databaseId: DATABASE_ID,
+    queries: [Query.equal("userId", userId), Query.limit(1)],
+    total: false,
+  });
+  const data = {
+    apellido: staffUser.apellido,
+    email: staffUser.email,
+    estado: staffUser.status === "inactivo" ? "inactivo" : "activo",
+    nombre: staffUser.nombre,
+    userId,
+  };
+
+  if (staffUser.documento) {
+    data.documento = staffUser.documento;
+  }
+
+  if (existing.documents[0]) {
+    return databases.updateDocument({
+      collectionId: TEACHERS_COLLECTION_ID,
+      databaseId: DATABASE_ID,
+      data,
+      documentId: existing.documents[0].$id,
+    });
+  }
+
+  return databases.createDocument({
+    collectionId: TEACHERS_COLLECTION_ID,
+    databaseId: DATABASE_ID,
+    data,
+    documentId: ID.unique(),
+    permissions: [],
+  });
+}
+
+async function setTeacherRecordStatus(databases, userId, estado) {
+  const existing = await databases.listDocuments({
+    collectionId: TEACHERS_COLLECTION_ID,
+    databaseId: DATABASE_ID,
+    queries: [Query.equal("userId", userId), Query.limit(1)],
+    total: false,
+  });
+
+  if (!existing.documents[0]) return;
+
+  await databases.updateDocument({
+    collectionId: TEACHERS_COLLECTION_ID,
+    databaseId: DATABASE_ID,
+    data: { estado },
+    documentId: existing.documents[0].$id,
+  });
+}
+
+async function findUserMembership(teams, userId) {
+  for (const teamId of [STAFF_TEAM_ID, DOCENTES_TEAM_ID]) {
+    const memberships = await teams.listMemberships({
+      queries: [Query.equal("userId", userId), Query.limit(1)],
+      teamId,
+      total: false,
+    });
+
+    if (memberships.memberships[0]) {
+      return { membership: memberships.memberships[0], teamId };
+    }
+  }
+
+  return { membership: null, teamId: null };
+}
+
 async function listPaymentTransactions(databases, paymentId) {
   return listAllDocuments(databases, TRANSACTIONS_COLLECTION_ID, [
     Query.equal("paymentId", paymentId),
@@ -518,12 +620,78 @@ async function registerTransaction(databases, payload) {
   };
 }
 
+async function saveStudentAttendance(databases, payload) {
+  const courseId = toCleanString(payload?.courseId);
+  const date = toCleanString(payload?.date);
+  const teacherId = toCleanString(payload?.teacherId);
+  const registradoPor = toCleanString(payload?.registradoPor);
+  const records = Array.isArray(payload?.records) ? payload.records : [];
+
+  if (!courseId || !date) {
+    return { error: "Faltan datos de la asistencia.", ok: false };
+  }
+
+  const validRecords = records.filter((record) =>
+    VALID_ATTENDANCE_STATES.has(record?.estado),
+  );
+
+  await Promise.all(
+    validRecords.map(async (record) => {
+      const studentId = toCleanString(record.studentId);
+
+      if (!studentId) return;
+
+      const existing = await databases.listDocuments({
+        collectionId: STUDENT_ATTENDANCE_COLLECTION_ID,
+        databaseId: DATABASE_ID,
+        queries: [
+          Query.equal("courseId", courseId),
+          Query.equal("studentId", studentId),
+          Query.equal("fecha", date),
+          Query.limit(1),
+        ],
+        total: false,
+      });
+      const data = {
+        courseId,
+        estado: record.estado,
+        fecha: date,
+        registradoPor,
+        studentId,
+        teacherId,
+      };
+
+      if (existing.documents[0]) {
+        await databases.updateDocument({
+          collectionId: STUDENT_ATTENDANCE_COLLECTION_ID,
+          databaseId: DATABASE_ID,
+          documentId: existing.documents[0].$id,
+          data,
+        });
+      } else {
+        await databases.createDocument({
+          collectionId: STUDENT_ATTENDANCE_COLLECTION_ID,
+          databaseId: DATABASE_ID,
+          data,
+          documentId: ID.unique(),
+          permissions: [],
+        });
+      }
+    }),
+  );
+
+  return { ok: true, saved: validRecords.length };
+}
+
 async function listStaffUsers({ databases, teams, users }) {
-  const [{ branchMap, branches }, profileMap, memberships] = await Promise.all([
-    getBranchMap(databases),
-    getProfileMap(databases),
-    listAllMemberships(teams, STAFF_TEAM_ID),
-  ]);
+  const [{ branchMap, branches }, profileMap, staffMemberships, docenteMemberships] =
+    await Promise.all([
+      getBranchMap(databases),
+      getProfileMap(databases),
+      listAllMemberships(teams, STAFF_TEAM_ID),
+      listAllMemberships(teams, DOCENTES_TEAM_ID),
+    ]);
+  const memberships = [...staffMemberships, ...docenteMemberships];
   const staffUsers = await Promise.all(
     memberships.map(async (membership) => {
       try {
@@ -559,20 +727,26 @@ async function createStaffUser({ databases, teams, users }, payload) {
   const { branchMap } = await getBranchMap(databases);
   const user = await users.create({
     email: staffUser.email,
-    name: staffUser.nombre,
+    name: staffUser.displayName,
     password: staffUser.password,
     userId: ID.unique(),
   });
   const membership = await teams.createMembership({
     roles: [staffUser.role],
-    teamId: STAFF_TEAM_ID,
+    teamId: teamForRole(staffUser.role),
     userId: user.$id,
   });
-  const profile = await upsertStaffProfile(
-    databases,
-    user.$id,
-    staffUser.role === "cajero" ? staffUser.sucursalId : "",
-  );
+  let profile = null;
+
+  if (staffUser.role === "docente") {
+    await upsertTeacherRecord(databases, user.$id, staffUser);
+  } else {
+    profile = await upsertStaffProfile(
+      databases,
+      user.$id,
+      staffUser.role === "cajero" ? staffUser.sucursalId : "",
+    );
+  }
 
   if (staffUser.status === "inactivo") {
     await users.updateStatus({ status: false, userId: user.$id });
@@ -597,19 +771,24 @@ async function updateStaffUser({ databases, teams, users }, payload) {
 
   const { staffUser } = validation;
   const { branchMap } = await getBranchMap(databases);
-  const memberships = await teams.listMemberships({
-    queries: [Query.equal("userId", cleanUserId), Query.limit(1)],
-    teamId: STAFF_TEAM_ID,
-    total: false,
-  });
-  const membership = memberships.memberships[0];
+  const { membership, teamId } = await findUserMembership(teams, cleanUserId);
 
   if (!membership) {
-    return { error: "El usuario no pertenece al equipo staff.", ok: false };
+    return { error: "El usuario no pertenece a ningún equipo.", ok: false };
+  }
+
+  const isDocenteTeam = teamId === DOCENTES_TEAM_ID;
+
+  if (isDocenteTeam !== (staffUser.role === "docente")) {
+    return {
+      error:
+        "No se puede cambiar entre docente y personal. Borra el usuario y créalo con el nuevo rol.",
+      ok: false,
+    };
   }
 
   let user = await users.updateName({
-    name: staffUser.nombre,
+    name: staffUser.displayName,
     userId: cleanUserId,
   });
 
@@ -635,13 +814,19 @@ async function updateStaffUser({ databases, teams, users }, payload) {
   const updatedMembership = await teams.updateMembership({
     membershipId: membership.$id,
     roles: [staffUser.role],
-    teamId: STAFF_TEAM_ID,
+    teamId,
   });
-  const profile = await upsertStaffProfile(
-    databases,
-    cleanUserId,
-    staffUser.role === "cajero" ? staffUser.sucursalId : "",
-  );
+  let profile = null;
+
+  if (isDocenteTeam) {
+    await upsertTeacherRecord(databases, cleanUserId, staffUser);
+  } else {
+    profile = await upsertStaffProfile(
+      databases,
+      cleanUserId,
+      staffUser.role === "cajero" ? staffUser.sucursalId : "",
+    );
+  }
 
   return {
     ok: true,
@@ -662,21 +847,21 @@ async function deleteStaffUser({ databases, teams, users }, payload) {
   }
 
   const { branchMap } = await getBranchMap(databases);
-  const memberships = await teams.listMemberships({
-    queries: [Query.equal("userId", cleanUserId), Query.limit(1)],
-    teamId: STAFF_TEAM_ID,
-    total: false,
-  });
-  const membership = memberships.memberships[0];
+  const { membership, teamId } = await findUserMembership(teams, cleanUserId);
 
   if (!membership) {
-    return { error: "El usuario no pertenece al equipo staff.", ok: false };
+    return { error: "El usuario no pertenece a ningún equipo.", ok: false };
   }
 
   const user = await users.updateStatus({
     status: false,
     userId: cleanUserId,
   });
+
+  if (teamId === DOCENTES_TEAM_ID) {
+    await setTeacherRecordStatus(databases, cleanUserId, "inactivo");
+  }
+
   const profileMap = await getProfileMap(databases);
 
   return {
@@ -732,6 +917,8 @@ export default async ({ req, res, error }) => {
 
     if (operation === "registerTransaction") {
       result = await registerTransaction(services.databases, payload);
+    } else if (operation === "saveStudentAttendance") {
+      result = await saveStudentAttendance(services.databases, payload);
     } else if (operation === "listStaffUsers") {
       result = await listStaffUsers(services);
     } else if (operation === "createStaffUser") {

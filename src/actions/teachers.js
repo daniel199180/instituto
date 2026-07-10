@@ -7,7 +7,7 @@ import {
   Query,
   createAdminDatabases,
 } from "@/lib/appwrite-server";
-import { requireStaffSession } from "@/lib/auth-guard";
+import { requireStaffRole } from "@/lib/auth-guard";
 
 const TEACHERS_COLLECTION_ID = "teachers";
 const COURSES_COLLECTION_ID = "courses";
@@ -151,7 +151,7 @@ function sortTeachers(teachers) {
 
 export async function listTeachers() {
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador"]);
 
     const teachers = await listAllDocuments(TEACHERS_COLLECTION_ID, [
       Query.select([
@@ -186,7 +186,7 @@ export async function createTeacher(input) {
   }
 
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador"]);
 
     const databases = createAdminDatabases();
     const teacher = await databases.createDocument({
@@ -218,7 +218,7 @@ export async function updateTeacher(teacherId, input) {
   }
 
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador"]);
 
     const databases = createAdminDatabases();
     const teacher = await databases.updateDocument({
@@ -244,7 +244,7 @@ export async function deleteTeacher(teacherId) {
   }
 
   try {
-    await requireStaffSession();
+    await requireStaffRole(["administrador"]);
 
     const databases = createAdminDatabases();
     const [courses, attendance] = await Promise.all([
