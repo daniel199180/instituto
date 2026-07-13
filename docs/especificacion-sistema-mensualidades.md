@@ -84,7 +84,7 @@ Un curso tiene un ciclo de vida con 4 estados posibles:
 | direccion        | string   | opcional                                                                                 |
 | sucursalId       | string   | opcional, referencia a `branches` para estudiantes asignados a sucursal sin curso activo |
 | fechaInscripcion | datetime | requerido                                                                                |
-| estado           | string   | activo / inactivo / retirado                                                             |
+| estado           | string   | activo / abandono / termino                                                              |
 
 ### `branches` (Sucursales)
 
@@ -300,7 +300,7 @@ Para no dejar registros huérfanos ni perder historial de pagos, la eliminación
 | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Sucursal** (`branches`)                       | Solo se puede eliminar si **todos sus cursos están en estado `cerrado`**. Si tiene algún curso en otro estado, la eliminación se bloquea y solo se permite cerrarla (`estado = cerrado`). |
 | **Curso** (`courses`)                           | Solo se puede eliminar si **no tiene inscripciones** (`enrollments`) registradas. Si ya tiene inscripciones/pagos históricos, no se elimina: se lleva a estado `cerrado`.                 |
-| **Estudiante** (`students`)                     | Solo se puede eliminar si no tiene inscripciones ni pagos históricos; de lo contrario se da de baja (`estado = retirado`/`inactivo`).                                                     |
+| **Estudiante** (`students`)                     | Solo se puede eliminar si no tiene inscripciones ni pagos históricos; de lo contrario se marca como abandono (`estado = abandono`).                                                        |
 | **Docente** (`teachers`)                        | Solo se puede eliminar si no está asignado a ningún curso ni tiene registros de asistencia; de lo contrario se da de baja (`estado = inactivo`).                                          |
 | **Carrera** (`careers`)                         | Solo se puede eliminar si no tiene cursos asociados; de lo contrario se cierra (`estado = cerrado`).                                                                                      |
 | **Pagos y cobros** (`payments`, `transactions`) | Nunca se eliminan: los cobros solo se **anulan** a nivel de transacción (regla definida en la sección 5).                                                                                 |

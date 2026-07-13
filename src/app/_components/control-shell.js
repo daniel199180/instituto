@@ -17,7 +17,6 @@ import {
   Eye,
   EyeOff,
   GraduationCap,
-  Landmark,
   LayoutDashboard,
   Layers3,
   Loader2,
@@ -92,9 +91,12 @@ const teacherNavSections = [
   {
     label: "Docente",
     items: [
-      { label: "Portal", href: "/docente", icon: Landmark },
       { label: "Mis cursos", href: "/docente/cursos", icon: BookOpen },
-      { label: "Mi asistencia", href: "/docente/asistencia", icon: Clock3 },
+      {
+        label: "Tomar asistencia",
+        href: "/docente/asistencia",
+        icon: Clock3,
+      },
     ],
   },
 ];

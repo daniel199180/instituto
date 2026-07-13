@@ -46,6 +46,7 @@ export function MyAttendanceClient({ initialCourseId = "" }) {
   const [courseId, setCourseId] = useState(initialCourseId);
   const [date, setDate] = useState(today);
   const [roster, setRoster] = useState([]);
+  const [attendanceLocked, setAttendanceLocked] = useState(false);
   const [drafts, setDrafts] = useState({});
   const [teacherName, setTeacherName] = useState("");
   const [confirmation, setConfirmation] = useState(null);
@@ -63,6 +64,7 @@ export function MyAttendanceClient({ initialCourseId = "" }) {
     if (!selectedCourseId) {
       setRoster([]);
       setDrafts({});
+      setAttendanceLocked(false);
       return;
     }
 
@@ -76,9 +78,11 @@ export function MyAttendanceClient({ initialCourseId = "" }) {
         setError(result.error);
         setRoster([]);
         setDrafts({});
+        setAttendanceLocked(false);
       } else {
         setRoster(result.roster);
         setDrafts(buildDrafts(result.roster));
+        setAttendanceLocked(Boolean(result.locked));
       }
 
       setIsLoadingRoster(false);
@@ -111,15 +115,8 @@ export function MyAttendanceClient({ initialCourseId = "" }) {
   }, []);
 
   function handleCourseChange(event) {
-    loadRoster(event.target.value, date);
+    loadRoster(event.target.value, today);
     setCourseId(event.target.value);
-  }
-
-  function handleDateChange(event) {
-    const nextDate = event.target.value || today;
-
-    setDate(nextDate);
-    loadRoster(courseId, nextDate);
   }
 
   function updateDraft(studentId, estado) {
@@ -143,6 +140,7 @@ export function MyAttendanceClient({ initialCourseId = "" }) {
 
       setRoster(result.roster);
       setDrafts(buildDrafts(result.roster));
+      setAttendanceLocked(Boolean(result.locked));
       setConfirmation({
         courseName: selectedCourse?.nombre || "",
         date,
@@ -179,16 +177,12 @@ export function MyAttendanceClient({ initialCourseId = "" }) {
           </select>
         </label>
 
-        <label className="field-group inline-field">
+        <div className="field-group inline-field">
           <span>Fecha</span>
-          <input
-            className="control-input"
-            max={today}
-            onChange={handleDateChange}
-            type="date"
-            value={date}
-          />
-        </label>
+          <div className="fixed-date-chip" aria-label={`Fecha actual ${date}`}>
+            {formatDisplayDate(date)}
+          </div>
+        </div>
       </section>
 
       {error ? (
@@ -248,6 +242,7 @@ export function MyAttendanceClient({ initialCourseId = "" }) {
                                 className={`attendance-status-btn is-${option.value} ${
                                   estado === option.value ? "is-selected" : ""
                                 }`}
+                                disabled={attendanceLocked || busy}
                                 key={option.value}
                                 onClick={() =>
                                   updateDraft(student.studentId, option.value)
@@ -286,6 +281,7 @@ export function MyAttendanceClient({ initialCourseId = "" }) {
                           className={`attendance-status-btn is-${option.value} ${
                             estado === option.value ? "is-selected" : ""
                           }`}
+                          disabled={attendanceLocked || busy}
                           key={option.value}
                           onClick={() => updateDraft(student.studentId, option.value)}
                           type="button"
@@ -300,9 +296,14 @@ export function MyAttendanceClient({ initialCourseId = "" }) {
             </div>
 
             <div className="attendance-actions">
+              {attendanceLocked ? (
+                <p className="form-note attendance-locked-note" role="status">
+                  La asistencia de hoy ya fue registrada y está cerrada.
+                </p>
+              ) : null}
               <button
                 className="primary-action"
-                disabled={busy}
+                disabled={attendanceLocked || busy}
                 onClick={handleSave}
                 type="button"
               >
@@ -311,7 +312,7 @@ export function MyAttendanceClient({ initialCourseId = "" }) {
                 ) : (
                   <Save size={18} />
                 )}
-                <span>Guardar asistencia</span>
+                <span>{attendanceLocked ? "Asistencia cerrada" : "Guardar asistencia"}</span>
               </button>
             </div>
           </>

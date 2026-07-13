@@ -1,5 +1,5 @@
-import { PrivatePage } from "../_components/control-shell";
+import { redirect } from "next/navigation";
 
 export default function TeacherPortalPage() {
-  return <PrivatePage navMode="teacher" title="Portal docente" />;
+  redirect("/docente/asistencia");
 }

@@ -754,40 +754,43 @@ a.primary-action {
 }
 
 .planner-event-main {
-  display: grid;
+  display: block;
   width: 100%;
   height: 100%;
-  min-width: 0;
-  align-content: start;
-  gap: 3px;
-  padding: 9px 8px 8px 9px;
-  text-align: left;
+  padding: 0;
 }
 
-.planner-event-main strong,
-.planner-event-main span,
-.planner-event-main small {
+.planner-event-trigger {
+  position: relative;
+}
+
+.planner-event-trigger:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.95);
+  outline-offset: -2px;
+}
+
+.planner-event-indicator {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.88);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
   overflow: hidden;
-  text-overflow: ellipsis;
+  clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-}
-
-.planner-event-main strong {
-  color: #ffffff;
-  font-size: 0.78rem;
-  font-weight: 820;
-}
-
-.planner-event-main span {
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 0.72rem;
-  font-weight: 650;
-}
-
-.planner-event-main small {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.68rem;
-  font-weight: 760;
+  border: 0;
 }
 
 .planner-event.is-sky {
@@ -844,6 +847,62 @@ a.primary-action {
     rgba(132, 204, 22, 0.86),
     rgba(77, 124, 15, 0.68)
   );
+}
+
+.schedule-detail-hero {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.24);
+}
+
+.schedule-detail-hero span {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.76rem;
+  font-weight: 760;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.schedule-detail-hero strong {
+  color: #ffffff;
+  font-size: 1.36rem;
+  font-weight: 820;
+  line-height: 1.05;
+}
+
+.schedule-detail-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.schedule-detail-list div {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 13px 14px;
+}
+
+.schedule-detail-list dt {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 760;
+}
+
+.schedule-detail-list dd {
+  margin: 0;
+  color: #ffffff;
+  font-size: 0.96rem;
+  font-weight: 720;
+}
+
+.schedule-detail-actions {
+  margin-top: 4px;
 }
 
 .desktop-table-scroll {
@@ -1021,6 +1080,18 @@ a.primary-action {
   color: #d8dee8;
 }
 
+.status-badge.is-abandono {
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  background: rgba(239, 68, 68, 0.14);
+  color: #ffc7c7;
+}
+
+.status-badge.is-termino {
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  background: rgba(59, 130, 246, 0.14);
+  color: #bfdbfe;
+}
+
 .status-badge.is-activa {
   border: 1px solid rgba(74, 222, 128, 0.24);
   background: rgba(34, 197, 94, 0.13);
@@ -1122,6 +1193,19 @@ a.primary-action {
   color: var(--muted);
 }
 
+.fixed-date-chip {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.86);
+  color: #ffffff;
+  font-size: 0.98rem;
+  font-weight: 720;
+  padding: 0 14px;
+}
+
 .sueldos-hint {
   display: flex;
   align-items: center;
@@ -1138,6 +1222,32 @@ a.primary-action {
 
 .attendance-actions .primary-action {
   min-width: 200px;
+}
+
+.attendance-log-shell {
+  margin-top: 22px;
+}
+
+.attendance-log-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.attendance-log-header h2 {
+  margin: 4px 0 0;
+  color: #ffffff;
+  font-size: 1.18rem;
+}
+
+.attendance-log-search {
+  width: min(360px, 100%);
+}
+
+.attendance-locked-note {
+  margin: 0;
 }
 
 .attendance-status-group {

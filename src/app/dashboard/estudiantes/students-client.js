@@ -33,8 +33,8 @@ const emptyForm = {
 
 const statusLabels = {
   activo: "Activo",
-  inactivo: "Inactivo",
-  retirado: "Retirado",
+  abandono: "Abandono",
+  termino: "Terminó",
 };
 
 const paymentStatusLabels = {
@@ -267,8 +267,8 @@ export function StudentsClient() {
         activo: 0,
         asignados: 0,
         deudores: 0,
-        inactivo: 0,
-        retirado: 0,
+        abandono: 0,
+        termino: 0,
         total: 0,
       },
     );
@@ -590,7 +590,7 @@ export function StudentsClient() {
 
   async function handleDelete(student) {
     const confirmed = window.confirm(
-      `¿Borrar al estudiante "${student.nombre} ${student.apellido}"? Si tiene historial, se marcará como retirado.`,
+          `¿Borrar al estudiante "${student.nombre} ${student.apellido}"? Si tiene historial, se marcará como abandono.`,
     );
 
     if (!confirmed) return;
@@ -609,7 +609,7 @@ export function StudentsClient() {
       if (result.retired) {
         upsertStudentInState(result.student);
         setNotice(
-          "El estudiante tiene historial académico o pagos; se marcó como retirado.",
+          "El estudiante tiene historial académico o pagos; se marcó como abandono.",
         );
         return;
       }
@@ -640,8 +640,8 @@ export function StudentsClient() {
           <strong>{stats.deudores}</strong>
         </div>
         <div className="branch-stat">
-          <span>Retirados</span>
-          <strong>{stats.retirado}</strong>
+          <span>Abandono</span>
+          <strong>{stats.abandono}</strong>
         </div>
       </section>
 
@@ -663,8 +663,8 @@ export function StudentsClient() {
           {[
             ["todos", "Todos"],
             ["activo", "Activos"],
-            ["inactivo", "Inactivos"],
-            ["retirado", "Retirados"],
+            ["abandono", "Abandono"],
+            ["termino", "Terminaron"],
           ].map(([value, label]) => (
             <button
               className={statusFilter === value ? "is-selected" : ""}
@@ -1295,8 +1295,8 @@ export function StudentsClient() {
                 <div className="state-options">
                   {[
                     ["activo", "Activo", Check],
-                    ["inactivo", "Inactivo", X],
-                    ["retirado", "Retirado", X],
+                    ["abandono", "Abandono", X],
+                    ["termino", "Terminó", Check],
                   ].map(([value, label, Icon]) => (
                     <label
                       className={form.estado === value ? "is-selected" : ""}

@@ -14,7 +14,7 @@ const BRANCHES_COLLECTION_ID = "branches";
 const COURSES_COLLECTION_ID = "courses";
 const ENROLLMENTS_COLLECTION_ID = "enrollments";
 const PAYMENTS_COLLECTION_ID = "payments";
-const VALID_STUDENT_STATUSES = new Set(["activo", "inactivo", "retirado"]);
+const VALID_STUDENT_STATUSES = new Set(["activo", "abandono", "termino"]);
 const ACTIVE_COURSE_STATUS = "en_inscripciones";
 const ACTIVE_ENROLLMENT_STATUS = "activa";
 
@@ -23,6 +23,8 @@ function toCleanString(value) {
 }
 
 function normalizeStudentStatus(status) {
+  if (status === "inactivo" || status === "retirado") return "abandono";
+
   return VALID_STUDENT_STATUSES.has(status) ? status : "activo";
 }
 
@@ -856,7 +858,7 @@ export async function deleteStudent(studentId) {
       await databases.updateDocument({
         collectionId: STUDENTS_COLLECTION_ID,
         databaseId: APPWRITE_DATABASE_ID,
-        data: { estado: "retirado" },
+        data: { estado: "abandono" },
         documentId: cleanStudentId,
       });
       const serializedStudent = await serializeStudentById(cleanStudentId);

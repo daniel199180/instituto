@@ -7,7 +7,11 @@ export default async function MyAttendancePage({ searchParams }) {
     typeof params?.courseId === "string" ? params.courseId : "";
 
   return (
-    <PrivatePage ariaLabel="Mi asistencia" navMode="teacher" title="Mi asistencia">
+    <PrivatePage
+      ariaLabel="Tomar asistencia"
+      navMode="teacher"
+      title="Tomar asistencia"
+    >
       <MyAttendanceClient initialCourseId={initialCourseId} />
     </PrivatePage>
   );

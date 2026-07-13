@@ -326,8 +326,8 @@ export function DashboardPosClient() {
 
         await copyPaymentLink(url);
         setPaymentLinkDialog({
-          message: "Enlace de inscripción generado y copiado.",
-          title: "Enlace de pago",
+          message: `La inscripción de ${result.enrollment.studentName} fue registrada correctamente. El enlace de pago fue generado y copiado.`,
+          title: "Inscripción exitosa",
           url,
         });
         setForm({
@@ -344,8 +344,8 @@ export function DashboardPosClient() {
           : "";
 
       setConfirmationDialog({
-        message: `Inscripción registrada para ${result.enrollment.studentName}.${paidText}`,
-        title: "Inscripción completada",
+        message: `La inscripción de ${result.enrollment.studentName} fue registrada correctamente.${paidText}`,
+        title: "Inscripción exitosa",
       });
       setForm({
         ...emptyEnrollmentForm,

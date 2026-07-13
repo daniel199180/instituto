@@ -70,7 +70,7 @@ function groupPaymentsByCourse(payments) {
 }
 
 export async function getDashboardPosData() {
-  const result = await listEnrollments();
+  const result = await listEnrollments({ onlyOpenCourses: true });
 
   if (!result.ok) {
     return {

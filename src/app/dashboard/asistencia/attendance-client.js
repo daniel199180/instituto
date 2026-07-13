@@ -1,11 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
-import { Check, ClipboardCheck, Loader2, Save, UserRound } from "lucide-react";
+import {
+  Check,
+  ClipboardCheck,
+  Loader2,
+  Search,
+  Save,
+  UserRound,
+} from "lucide-react";
 import {
   getCourseRosterForStaff,
   getTeacherCoursesForStaff,
   getTeachersForAttendance,
+  listStudentAttendanceLog,
   saveCourseAttendanceForStaff,
 } from "@/actions/attendance";
 
@@ -25,6 +33,12 @@ const STATUS_OPTIONS = [
   { label: "Ausente", value: "ausente" },
   { label: "Justificado", value: "justificado" },
 ];
+
+const STATUS_LABELS = {
+  ausente: "Ausente",
+  justificado: "Justificado",
+  presente: "Presente",
+};
 
 function getTodayDateInputValue() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -49,12 +63,16 @@ export function AttendanceClient() {
   const [courseId, setCourseId] = useState("");
   const [date, setDate] = useState(today);
   const [roster, setRoster] = useState([]);
+  const [attendanceLocked, setAttendanceLocked] = useState(false);
   const [drafts, setDrafts] = useState({});
+  const [attendanceLog, setAttendanceLog] = useState([]);
+  const [logQuery, setLogQuery] = useState("");
   const [confirmation, setConfirmation] = useState(null);
   const [error, setError] = useState("");
   const [isLoadingTeachers, setIsLoadingTeachers] = useState(true);
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [isLoadingRoster, setIsLoadingRoster] = useState(false);
+  const [isLoadingLog, setIsLoadingLog] = useState(true);
   const [isPending, startTransition] = useTransition();
 
   const selectedCourse = useMemo(
@@ -67,10 +85,40 @@ export function AttendanceClient() {
     [teachers, teacherId],
   );
 
+  const visibleAttendanceLog = useMemo(() => {
+    const normalizedQuery = logQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) return attendanceLog;
+
+    return attendanceLog.filter((entry) =>
+      `${entry.studentName} ${entry.studentDocument} ${entry.courseName} ${entry.teacherName} ${entry.date}`
+        .toLowerCase()
+        .includes(normalizedQuery),
+    );
+  }, [attendanceLog, logQuery]);
+
+  function refreshAttendanceLog() {
+    setIsLoadingLog(true);
+
+    startTransition(async () => {
+      const result = await listStudentAttendanceLog();
+
+      if (!result.ok) {
+        setError(result.error);
+        setAttendanceLog([]);
+      } else {
+        setAttendanceLog(result.entries);
+      }
+
+      setIsLoadingLog(false);
+    });
+  }
+
   const loadRoster = useCallback((selectedCourseId, selectedDate) => {
     if (!selectedCourseId) {
       setRoster([]);
       setDrafts({});
+      setAttendanceLocked(false);
       return;
     }
 
@@ -84,9 +132,11 @@ export function AttendanceClient() {
         setError(result.error);
         setRoster([]);
         setDrafts({});
+        setAttendanceLocked(false);
       } else {
         setRoster(result.roster);
         setDrafts(buildDrafts(result.roster));
+        setAttendanceLocked(Boolean(result.locked));
       }
 
       setIsLoadingRoster(false);
@@ -99,6 +149,7 @@ export function AttendanceClient() {
     setError("");
     setRoster([]);
     setDrafts({});
+    setAttendanceLocked(false);
 
     startTransition(async () => {
       const result = await getTeacherCoursesForStaff(selectedTeacherId);
@@ -123,6 +174,7 @@ export function AttendanceClient() {
   }, [date, loadRoster]);
 
   useEffect(() => {
+    refreshAttendanceLog();
     getTeachersForAttendance().then((result) => {
       if (!result.ok) {
         setError(result.error);
@@ -179,11 +231,13 @@ export function AttendanceClient() {
 
       setRoster(result.roster);
       setDrafts(buildDrafts(result.roster));
+      setAttendanceLocked(Boolean(result.locked));
       setConfirmation({
         courseName: selectedCourse?.nombre || "",
         date,
         teacherName: selectedTeacher?.nombre || "",
       });
+      refreshAttendanceLog();
     });
   }
 
@@ -304,6 +358,7 @@ export function AttendanceClient() {
                                 className={`attendance-status-btn is-${option.value} ${
                                   estado === option.value ? "is-selected" : ""
                                 }`}
+                                disabled={attendanceLocked || busy}
                                 key={option.value}
                                 onClick={() =>
                                   updateDraft(student.studentId, option.value)
@@ -342,6 +397,7 @@ export function AttendanceClient() {
                           className={`attendance-status-btn is-${option.value} ${
                             estado === option.value ? "is-selected" : ""
                           }`}
+                          disabled={attendanceLocked || busy}
                           key={option.value}
                           onClick={() => updateDraft(student.studentId, option.value)}
                           type="button"
@@ -356,9 +412,14 @@ export function AttendanceClient() {
             </div>
 
             <div className="attendance-actions">
+              {attendanceLocked ? (
+                <p className="form-note attendance-locked-note" role="status">
+                  La asistencia de esta fecha ya fue registrada y está cerrada.
+                </p>
+              ) : null}
               <button
                 className="primary-action"
-                disabled={busy}
+                disabled={attendanceLocked || busy}
                 onClick={handleSave}
                 type="button"
               >
@@ -367,7 +428,7 @@ export function AttendanceClient() {
                 ) : (
                   <Save size={18} />
                 )}
-                <span>Guardar asistencia</span>
+                <span>{attendanceLocked ? "Asistencia cerrada" : "Guardar asistencia"}</span>
               </button>
             </div>
           </>
@@ -375,6 +436,74 @@ export function AttendanceClient() {
           <div className="table-state">
             <ClipboardCheck size={22} />
             <span>Este curso no tiene estudiantes inscritos activos.</span>
+          </div>
+        )}
+      </section>
+
+      <section className="branch-table-shell attendance-log-shell" aria-label="Log de asistencia por estudiante">
+        <div className="attendance-log-header">
+          <div>
+            <p className="eyebrow">Historial</p>
+            <h2>Log de asistencia por estudiante</h2>
+          </div>
+          <label className="search-control attendance-log-search">
+            <Search size={17} strokeWidth={1.8} />
+            <input
+              onChange={(event) => setLogQuery(event.target.value)}
+              placeholder="Buscar estudiante, curso o docente"
+              type="search"
+              value={logQuery}
+            />
+          </label>
+        </div>
+
+        {isLoadingLog ? (
+          <div className="table-state">
+            <Loader2 className="spin-icon" size={22} />
+            <span>Cargando historial</span>
+          </div>
+        ) : visibleAttendanceLog.length ? (
+          <div className="desktop-table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Estudiante</th>
+                  <th>Documento</th>
+                  <th>Curso</th>
+                  <th>Docente</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleAttendanceLog.map((entry) => (
+                  <tr key={entry.$id}>
+                    <td>{formatDisplayDate(entry.date)}</td>
+                    <td>
+                      <div className="branch-name-cell">
+                        <span className="branch-icon">
+                          <UserRound size={18} strokeWidth={1.8} />
+                        </span>
+                        <strong>{entry.studentName}</strong>
+                      </div>
+                    </td>
+                    <td>{entry.studentDocument || "-"}</td>
+                    <td>{entry.courseName}</td>
+                    <td>{entry.teacherName}</td>
+                    <td>
+                      <span className={`status-badge is-${entry.status}`}>
+                        {STATUS_LABELS[entry.status] || entry.status || "-"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="table-state">
+            <ClipboardCheck size={22} />
+            <span>No hay registros de asistencia.</span>
           </div>
         )}
       </section>

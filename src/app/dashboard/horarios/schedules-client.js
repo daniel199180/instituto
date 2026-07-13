@@ -198,6 +198,7 @@ export function SchedulesClient() {
   const [courses, setCourses] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [drawerMode, setDrawerMode] = useState("closed");
+  const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [query, setQuery] = useState("");
@@ -344,9 +345,18 @@ export function SchedulesClient() {
     });
   }
 
+  function openDetailsDrawer(schedule) {
+    setError("");
+    setNotice("");
+    setSelectedSchedule(schedule);
+    setEditingSchedule(null);
+    setDrawerMode("details");
+  }
+
   function openEditDrawer(schedule) {
     setError("");
     setNotice("");
+    setSelectedSchedule(schedule);
     setEditingSchedule(schedule);
     setForm({
       courseId: schedule.courseId,
@@ -361,6 +371,7 @@ export function SchedulesClient() {
     if (isPending && !force) return;
 
     setDrawerMode("closed");
+    setSelectedSchedule(null);
     setEditingSchedule(null);
     setForm(emptyForm);
   }
@@ -403,6 +414,7 @@ export function SchedulesClient() {
       }
 
       upsertSchedule(result.schedule);
+      setSelectedSchedule(normalizeSchedule(result.schedule));
       closeDrawer(true);
     });
   }
@@ -596,24 +608,18 @@ export function SchedulesClient() {
                         }}
                       >
                         <button
-                          aria-label={`Editar horario de ${schedule.courseName}`}
-                          className="planner-event-main"
-                          onClick={() => openEditDrawer(schedule)}
+                          aria-label={`Ver detalle de ${schedule.courseName}`}
+                          className="planner-event-main planner-event-trigger"
+                          onClick={() => openDetailsDrawer(schedule)}
+                          title={`${schedule.courseName} · ${schedule.horaInicio} - ${schedule.horaFin}`}
                           type="button"
                         >
-                          <strong>{schedule.courseName}</strong>
-                          <span>{schedule.docenteNombre}</span>
-                          <span>{schedule.sucursalNombre}</span>
-                          <span>
-                            {schedule.cupoOcupado}
-                            {schedule.cupoMaximo
-                              ? `/${schedule.cupoMaximo}`
-                              : ""}{" "}
-                            estudiantes
+                          <span className="sr-only">
+                            {schedule.courseName} con {schedule.docenteNombre} en{" "}
+                            {schedule.sucursalNombre}, {dayLabels[schedule.dia]},{" "}
+                            {schedule.horaInicio} a {schedule.horaFin}
                           </span>
-                          <small>
-                            {schedule.horaInicio} - {schedule.horaFin}
-                          </small>
+                          <span className="planner-event-indicator" aria-hidden="true" />
                         </button>
                       </article>
                     );
@@ -647,7 +653,9 @@ export function SchedulesClient() {
               <div>
                 <p className="eyebrow">Horario</p>
                 <h2 id="schedule-drawer-title">
-                  {drawerMode === "edit" ? "Editar" : "Crear"}
+                  {drawerMode === "edit"
+                    ? "Editar horario"
+                    : selectedSchedule?.courseName || "Detalle del curso"}
                 </h2>
               </div>
               <button
@@ -660,91 +668,153 @@ export function SchedulesClient() {
               </button>
             </header>
 
-            <form className="drawer-form" onSubmit={handleSubmit}>
-              <label className="field-group">
-                <span>Curso</span>
-                <select
-                  className="control-input"
-                  name="courseId"
-                  onChange={handleFieldChange}
-                  required
-                  value={form.courseId}
+            {drawerMode === "details" && selectedSchedule ? (
+              <div className="drawer-form">
+                <div
+                  className={`schedule-detail-hero ${getCourseColorClass(
+                    selectedSchedule.courseId,
+                    courseColorMap,
+                  )}`}
                 >
-                  <option value="">Seleccionar</option>
-                  {drawerCourses.map((course) => (
-                    <option key={course.$id} value={course.$id}>
-                      {course.nombre} - {course.sucursalNombre}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <span>{dayLabels[selectedSchedule.dia]}</span>
+                  <strong>
+                    {selectedSchedule.horaInicio} - {selectedSchedule.horaFin}
+                  </strong>
+                </div>
 
-              <label className="field-group">
-                <span>Día</span>
-                <select
-                  className="control-input"
-                  name="dia"
-                  onChange={handleFieldChange}
-                  required
-                  value={form.dia}
-                >
-                  {dayOptions.map((day) => (
-                    <option key={day} value={day}>
-                      {dayLabels[day]}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                <dl className="schedule-detail-list">
+                  <div>
+                    <dt>Curso</dt>
+                    <dd>{selectedSchedule.courseName}</dd>
+                  </div>
+                  <div>
+                    <dt>Docente</dt>
+                    <dd>{selectedSchedule.docenteNombre}</dd>
+                  </div>
+                  <div>
+                    <dt>Sucursal</dt>
+                    <dd>{selectedSchedule.sucursalNombre}</dd>
+                  </div>
+                  <div>
+                    <dt>Estudiantes</dt>
+                    <dd>
+                      {selectedSchedule.cupoOcupado}
+                      {selectedSchedule.cupoMaximo
+                        ? `/${selectedSchedule.cupoMaximo}`
+                        : ""}{" "}
+                      inscritos
+                    </dd>
+                  </div>
+                </dl>
 
-              <div className="form-two-columns">
+                <div className="drawer-actions schedule-detail-actions">
+                  <button
+                    className="secondary-action"
+                    onClick={() => closeDrawer()}
+                    type="button"
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    className="primary-action"
+                    onClick={() => openEditDrawer(selectedSchedule)}
+                    type="button"
+                  >
+                    Editar horario
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form className="drawer-form" onSubmit={handleSubmit}>
                 <label className="field-group">
-                  <span>Hora inicio</span>
-                  <input
+                  <span>Curso</span>
+                  <select
                     className="control-input"
-                    name="horaInicio"
+                    name="courseId"
                     onChange={handleFieldChange}
                     required
-                    type="time"
-                    value={form.horaInicio}
-                  />
+                    value={form.courseId}
+                  >
+                    <option value="">Seleccionar</option>
+                    {drawerCourses.map((course) => (
+                      <option key={course.$id} value={course.$id}>
+                        {course.nombre} - {course.sucursalNombre}
+                      </option>
+                    ))}
+                  </select>
                 </label>
 
                 <label className="field-group">
-                  <span>Hora fin</span>
-                  <input
+                  <span>Día</span>
+                  <select
                     className="control-input"
-                    name="horaFin"
+                    name="dia"
                     onChange={handleFieldChange}
                     required
-                    type="time"
-                    value={form.horaFin}
-                  />
+                    value={form.dia}
+                  >
+                    {dayOptions.map((day) => (
+                      <option key={day} value={day}>
+                        {dayLabels[day]}
+                      </option>
+                    ))}
+                  </select>
                 </label>
-              </div>
 
-              <div className="drawer-actions">
-                <button
-                  className="secondary-action"
-                  disabled={isPending}
-                  onClick={() => closeDrawer()}
-                  type="button"
-                >
-                  Cancelar
-                </button>
-                <button
-                  className="primary-action"
-                  disabled={isPending}
-                  type="submit"
-                >
-                  {isPending ? (
-                    <Loader2 className="spin-icon" size={18} />
-                  ) : (
-                    <Check size={18} />
-                  )}
-                  <span>Guardar</span>
-                </button>
-              </div>
-            </form>
+                <div className="form-two-columns">
+                  <label className="field-group">
+                    <span>Hora inicio</span>
+                    <input
+                      className="control-input"
+                      name="horaInicio"
+                      onChange={handleFieldChange}
+                      required
+                      type="time"
+                      value={form.horaInicio}
+                    />
+                  </label>
+
+                  <label className="field-group">
+                    <span>Hora fin</span>
+                    <input
+                      className="control-input"
+                      name="horaFin"
+                      onChange={handleFieldChange}
+                      required
+                      type="time"
+                      value={form.horaFin}
+                    />
+                  </label>
+                </div>
+
+                <div className="drawer-actions">
+                  <button
+                    className="secondary-action"
+                    disabled={isPending}
+                    onClick={() =>
+                      selectedSchedule
+                        ? openDetailsDrawer(selectedSchedule)
+                        : closeDrawer()
+                    }
+                    type="button"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    className="primary-action"
+                    disabled={isPending}
+                    type="submit"
+                  >
+                    {isPending ? (
+                      <Loader2 className="spin-icon" size={18} />
+                    ) : (
+                      <Check size={18} />
+                    )}
+                    <span>Guardar</span>
+                  </button>
+                </div>
+              </form>
+            )}
           </aside>
         </div>
       ) : null}

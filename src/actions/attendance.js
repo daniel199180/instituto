@@ -167,6 +167,7 @@ async function buildRoster(courseId, date) {
   return {
     course: { $id: course.$id, docenteId: course.docenteId, nombre: course.nombre || "" },
     date,
+    locked: existingAttendance.length > 0,
     roster,
   };
 }
@@ -182,6 +183,15 @@ async function persistAttendanceLocally({
   const validRecords = (Array.isArray(records) ? records : []).filter((record) =>
     VALID_ATTENDANCE_STATES.has(record?.estado),
   );
+
+  const existingAttendance = await listAllDocuments(
+    STUDENT_ATTENDANCE_COLLECTION_ID,
+    [Query.equal("courseId", courseId), Query.equal("fecha", date)],
+  );
+
+  if (existingAttendance.length) {
+    throw new Error("La asistencia de este curso ya fue registrada hoy y no se puede editar.");
+  }
 
   await Promise.all(
     validRecords.map(async (record) => {
@@ -234,6 +244,18 @@ async function persistAttendanceLocally({
 // registerTransaction / staff users). The caller has already verified the
 // teacher owns the course before we get here.
 async function persistAttendance(params) {
+  const existingAttendance = await listAllDocuments(
+    STUDENT_ATTENDANCE_COLLECTION_ID,
+    [
+      Query.equal("courseId", params.courseId),
+      Query.equal("fecha", params.date),
+    ],
+  );
+
+  if (existingAttendance.length) {
+    throw new Error("La asistencia de este curso ya fue registrada hoy y no se puede editar.");
+  }
+
   const result = await invokeSecureOperation("saveStudentAttendance", params);
 
   if (result.useLocalFallback) {
@@ -330,6 +352,77 @@ export async function getTeachersForAttendance() {
     };
   } catch (error) {
     return { error: getActionError(error), ok: false, teachers: [] };
+  }
+}
+
+export async function listStudentAttendanceLog() {
+  try {
+    await requireStaffRole(["administrador", "academico"]);
+
+    const [records, students, courses, teachers] = await Promise.all([
+      listAllDocuments(STUDENT_ATTENDANCE_COLLECTION_ID, [
+        Query.select([
+          "$id",
+          "courseId",
+          "studentId",
+          "teacherId",
+          "fecha",
+          "estado",
+          "registradoPor",
+        ]),
+      ]),
+      listAllDocuments(STUDENTS_COLLECTION_ID, [
+        Query.select(["$id", "nombre", "apellido", "documento"]),
+      ]),
+      listAllDocuments(COURSES_COLLECTION_ID, [
+        Query.select(["$id", "nombre"]),
+      ]),
+      listAllDocuments(TEACHERS_COLLECTION_ID, [
+        Query.select(["$id", "nombre", "apellido"]),
+      ]),
+    ]);
+    const studentMap = new Map(
+      students.map((student) => [
+        student.$id,
+        {
+          documento: student.documento || "",
+          nombre: `${student.nombre || ""} ${student.apellido || ""}`.trim(),
+        },
+      ]),
+    );
+    const courseMap = new Map(
+      courses.map((course) => [course.$id, course.nombre || "Curso no encontrado"]),
+    );
+    const teacherMap = new Map(
+      teachers.map((teacher) => [
+        teacher.$id,
+        `${teacher.nombre || ""} ${teacher.apellido || ""}`.trim(),
+      ]),
+    );
+
+    return {
+      entries: records
+        .map((record) => ({
+          $id: record.$id,
+          courseName: courseMap.get(record.courseId) || "Curso no encontrado",
+          date: record.fecha || "",
+          registeredBy: record.registradoPor || "",
+          status: record.estado || "",
+          studentDocument: studentMap.get(record.studentId)?.documento || "",
+          studentName:
+            studentMap.get(record.studentId)?.nombre || "Estudiante no encontrado",
+          teacherName: teacherMap.get(record.teacherId) || "Docente no encontrado",
+        }))
+        .sort((left, right) =>
+          `${right.date} ${left.studentName}`.localeCompare(
+            `${left.date} ${right.studentName}`,
+            "es",
+          ),
+        ),
+      ok: true,
+    };
+  } catch (error) {
+    return { entries: [], error: getActionError(error), ok: false };
   }
 }
 

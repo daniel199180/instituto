@@ -48,7 +48,9 @@ function normalizeCourseStatus(status) {
 }
 
 function normalizeStudentStatus(status) {
-  return status === "inactivo" || status === "retirado" ? status : "activo";
+  if (status === "inactivo" || status === "retirado") return "abandono";
+
+  return status === "abandono" || status === "termino" ? status : "activo";
 }
 
 function getActionError(error) {
@@ -312,7 +314,7 @@ function validateEnrollmentInput(input) {
   return { enrollment, scholarship };
 }
 
-async function getEnrollmentContext() {
+async function getEnrollmentContext(options = {}) {
   const [branches, courses, students, activeEnrollments] = await Promise.all([
     listAllDocuments(BRANCHES_COLLECTION_ID, [
       Query.select(["$id", "nombre", "estado"]),
@@ -358,6 +360,9 @@ async function getEnrollmentContext() {
     courses.map((course) =>
       serializeCourse(course, { branchMap, enrollmentCounts }),
     ),
+  ).filter(
+    (course) =>
+      !options.onlyOpenCourses || course.estado === ACTIVE_COURSE_STATUS,
   );
 
   return {
@@ -386,12 +391,12 @@ async function getSerializedEnrollment(enrollmentId) {
   return serializeEnrollment(enrollment, context);
 }
 
-export async function listEnrollments() {
+export async function listEnrollments(options = {}) {
   try {
     await requireStaffRole(["administrador", "cajero"]);
 
     const [context, enrollments] = await Promise.all([
-      getEnrollmentContext(),
+      getEnrollmentContext(options),
       listAllDocuments(ENROLLMENTS_COLLECTION_ID, [
         Query.select([
           "$id",

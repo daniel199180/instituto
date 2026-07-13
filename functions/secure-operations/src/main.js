@@ -635,6 +635,19 @@ async function saveStudentAttendance(databases, payload) {
     VALID_ATTENDANCE_STATES.has(record?.estado),
   );
 
+  const existingAttendance = await listAllDocuments(
+    databases,
+    STUDENT_ATTENDANCE_COLLECTION_ID,
+    [Query.equal("courseId", courseId), Query.equal("fecha", date)],
+  );
+
+  if (existingAttendance.length) {
+    return {
+      error: "La asistencia de este curso ya fue registrada hoy y no se puede editar.",
+      ok: false,
+    };
+  }
+
   await Promise.all(
     validRecords.map(async (record) => {
       const studentId = toCleanString(record.studentId);
